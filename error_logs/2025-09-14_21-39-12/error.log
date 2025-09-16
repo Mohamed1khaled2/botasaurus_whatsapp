@@ -1,0 +1,24 @@
+Traceback (most recent call last):
+  File "c:\Users\lapto\AppData\Local\Programs\Python\Python313\Lib\site-packages\botasaurus\browser_decorator.py", line 201, in run_task
+    result = func(driver, data)
+  File "d:\mada\devlopment\botasaurus_whatsapp-main\whatsapp_automation.py", line 26, in open_whatsapp
+    driver.google_get("https://web.whatsapp.com/")
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\Users\lapto\AppData\Local\Programs\Python\Python313\Lib\site-packages\botasaurus_driver\driver.py", line 2230, in google_get
+    self.get_via(
+    ~~~~~~~~~~~~^
+        link,
+        ^^^^^
+    ...<4 lines>...
+        timeout=timeout,
+        ^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "c:\Users\lapto\AppData\Local\Programs\Python\Python313\Lib\site-packages\botasaurus_driver\driver.py", line 2199, in get_via
+    self._tab = self._browser.get(link, referrer=referer, )
+                ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\Users\lapto\AppData\Local\Programs\Python\Python313\Lib\site-packages\botasaurus_driver\core\browser.py", line 307, in get
+    connection = self.get_first_tab()
+  File "c:\Users\lapto\AppData\Local\Programs\Python\Python313\Lib\site-packages\botasaurus_driver\core\browser.py", line 319, in get_first_tab
+    return next(filter(lambda item: item._target.type_ == "page", self.targets))
+StopIteration
