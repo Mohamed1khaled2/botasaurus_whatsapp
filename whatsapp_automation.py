@@ -55,8 +55,13 @@ def open_whatsapp(driver: Driver, data):
             sleep(random.uniform(1, 3))
 
                 
-            driver.wait_for_element(selector=json_data['send_button']).click()
+            # send button
+            try:
+                driver.wait_for_element(selector=json_data['send_button_1']).click()
+            except:
+                driver.wait_for_element(selector=json_data['send_button_2']).click()
 
+            
             sleep(random.uniform(1, 3))
 
             driver.get_all_elements_containing_text(text="web.whatsapp.com")[-1].click()
@@ -78,7 +83,11 @@ def open_whatsapp(driver: Driver, data):
             write_message(driver=driver, message=messages[0])
                 
             # send button
-            driver.wait_for_element(selector=json_data['send_button']).click()
+            try:
+                driver.wait_for_element(selector=json_data['send_button_1']).click()
+            except:
+                driver.wait_for_element(selector=json_data['send_button_2']).click()
+
             
             # to get another number
             index+=1
@@ -94,7 +103,7 @@ def open_whatsapp(driver: Driver, data):
 
 phone_list = [
     # {"phone_number": "201289422813", "profile": "201289422813"},
-    {"phone_number": "201552694323", "profile": "201552694323"},
+    {"phone_number": "201027117929", "profile": "201027117929"},
 ]
 
 # Start the threads (browsers)
