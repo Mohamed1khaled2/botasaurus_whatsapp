@@ -46,7 +46,7 @@ def get_message() -> list[str]:
             messages.append(txt_file)
 
     for message in messages:
-        with open(message, "r", encoding="utf-8") as msg:
+        with open("./messages/"+message, "r", encoding="utf-8") as msg:
             msg_ = msg.read()
             if len(msg_) != 0:
                 text_messages.append(msg_)
