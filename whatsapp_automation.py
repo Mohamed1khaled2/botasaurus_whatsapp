@@ -163,7 +163,7 @@ def open_whatsapp(driver: Driver, data):
 _raw_phone_list = [
     {"phone_number": "201068105917", "profile": "201068105917"},
     {"phone_number": "201505774702", "profile": "201505774702"},
-    {"phone_number": "201289427756", "profile": "201289427756"},
+    # {"phone_number": "201289427756", "profile": "201289427756"},
     {"phone_number": "201280578648", "profile": "201280578648"},
     # {"phone_number": "201552694323", "profile": "201552694323"}, # ban 24 hours
 #      {"phone_number": "201289427756", "profile": "201289427756"},
