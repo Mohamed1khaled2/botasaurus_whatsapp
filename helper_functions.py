@@ -100,8 +100,10 @@ def main():
         
         if len(message) == 0 or len(number) == 0:
             raise Exception("ERROR: message or number is not found \n hint: Must the file of message name is message and number file name is number")
-        if len(number) != len(message):
-            raise Exception("ERROR: count of files numbers and messages not equal \n hint: Must the file of message name is message and number file name is number")
+    # COMMit that becuse nake the random messages to sent
+    #     if len(number) != len(message):
+    #         raise Exception("ERROR: count of files numbers and messages not equal \n hint: Must the file of message name is message and number file name is number")
+    
     except TypeError:
         sys.exit("You need to create file numbers.txt and file message.txt")
     except Exception as e:

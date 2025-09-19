@@ -1,9 +1,0 @@
-Traceback (most recent call last):
-  File "c:\Users\lapto\AppData\Local\Programs\Python\Python313\Lib\site-packages\botasaurus\browser_decorator.py", line 201, in run_task
-    result = func(driver, data)
-  File "d:\mada\devlopment\botasaurus_whatsapp-main\whatsapp_automation.py", line 78, in open_whatsapp
-    driver.click_element_containing_text("Type a message")
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
-  File "c:\Users\lapto\AppData\Local\Programs\Python\Python313\Lib\site-packages\botasaurus_driver\driver.py", line 1023, in click_element_containing_text
-    raise ElementWithTextNotFoundException(text)
-botasaurus_driver.exceptions.ElementWithTextNotFoundException: Cannot find element containing text: 'Type a message'.
