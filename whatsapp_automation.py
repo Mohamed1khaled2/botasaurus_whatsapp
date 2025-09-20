@@ -5,8 +5,6 @@
 """
 
 
-
-
 from helper_functions import *
 from botasaurus.browser import browser, Driver, Wait
 from time import sleep
@@ -35,8 +33,7 @@ def open_whatsapp(driver: Driver, data):
     messages = get_message()
     my_idx = int(data.get("thread_index", 0))   # this thread's slot in the round-robin
     num_threads = int(data.get("num_threads", 1))
-
-    driver.enable_human_mode()
+ذ
 
     sleep(random.uniform(1.0, 3.0))  
     driver.google_get("https://web.whatsapp.com/")
@@ -163,11 +160,8 @@ def open_whatsapp(driver: Driver, data):
 _raw_phone_list = [
     {"phone_number": "201068105917", "profile": "201068105917"},
     {"phone_number": "201505774702", "profile": "201505774702"},
-    # {"phone_number": "201289427756", "profile": "201289427756"},
     {"phone_number": "201280578648", "profile": "201280578648"},
-    # {"phone_number": "201552694323", "profile": "201552694323"}, # ban 24 hours
-#      {"phone_number": "201289427756", "profile": "201289427756"},
-#      {"phone_number": "201280578648", "profile": "201280578648"},
+
 ]
 
 # attach thread_index and num_threads to each data dict

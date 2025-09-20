@@ -15,8 +15,12 @@ Profiles.set_profile("201068105917", {'name': "201068105917", 'type_number':"vod
 # Profiles.set_profile("201505177473", {'name': "201505177473", 'type_number':"we"}) #! Take ban 18/9/2025
 Profiles.set_profile("201505774702", {'name': "201505774702", 'type_number':"we"})
 Profiles.set_profile("201289427756", {'name': "201289427756", 'type_number':"orange"})
-Profiles.set_profile("201280578648", {'name': "201280578648", 'type_number':"orange"})
 Profiles.set_profile("201552694323", {'name': "201552694323", 'type_number':"we"})
+Profiles.set_profile("201552694323", {'name': "201010723014", 'type_number':"vodaphone"})
+Profiles.set_profile("201280578648", {'name': "201280578648", 'type_number':"orange"})
+
+Profiles.set_profile("201001766549", {'name': "201001766549", 'type_number':"vodaphone"})
+
 # # Get a profile
 # profile = Profiles.get_profile('201289422813')
 # print(profile)  # Output: {'name': 'Amit Sharma', 'age': 30}
