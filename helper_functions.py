@@ -1,6 +1,6 @@
 from botasaurus.browser import Driver
 import os
-import sys
+
 import json
 import time
 import pyautogui
@@ -8,50 +8,44 @@ import random
 
 
 
+def get_numbers(folder_path) -> list[str]:
+    all_numbers = []
 
-files = os.listdir(path=os.getcwd())
+    folder = os.listdir(folder_path)
 
-# search about .txt
-txt_files = []
-for file in files:
+    for txt_file in folder:
+        if "numbers" in txt_file:
+            with open(os.path.join(folder_path, txt_file), "r") as num_file:
+                lines = num_file.readlines()
+                cleaned = [line.strip() for line in lines if line.strip()]
+                all_numbers.extend(cleaned)
 
-    if file.endswith(".txt"):
-        txt_files.append(file)
-
-
-def get_numbers() -> list[list[str]]:
-    numbers = []
-    text_numbers = []
-
-    for txt_file in txt_files:
-        if txt_file.find("numbers") != -1:
-            numbers.append(txt_file)
-
-    for number in numbers:
-        with open(number, "r") as num:
-            num_ = num.readlines()
-            if len(num_) != 0:
-                text_numbers.append(num_)
-    return text_numbers
+    return all_numbers
 
 
-def get_message() -> list[str]:
+
+def get_message(folder_path) -> list[str]:
+    
     messages = []
     text_messages = []
 
     
+    foler = os.listdir(folder_path)
     
-    for txt_file in txt_files:
+    
+    for txt_file in foler:
         if txt_file.find("message") != -1:
             messages.append(txt_file)
-
+     
     for message in messages:
-        with open(message, "r", encoding="utf-8") as msg:
+        with open(folder_path+"/"+message, "r", encoding="utf-8") as msg:
             msg_ = msg.read()
             if len(msg_) != 0:
                 text_messages.append(msg_)
-
+    
     return text_messages
+
+
 
 
 def write_message(driver: Driver, message: str):
@@ -93,21 +87,23 @@ def moving_for_duration(duration_seconds):
     print("Time finished")
 
 
-def main():
-    try:
-        message = get_message()
-        number = get_numbers()
-        
-        if len(message) == 0 or len(number) == 0:
-            raise Exception("ERROR: message or number is not found \n hint: Must the file of message name is message and number file name is number")
-    # COMMit that becuse nake the random messages to sent
-    #     if len(number) != len(message):
-    #         raise Exception("ERROR: count of files numbers and messages not equal \n hint: Must the file of message name is message and number file name is number")
+# def main():
     
-    except TypeError:
-        sys.exit("You need to create file numbers.txt and file message.txt")
-    except Exception as e:
-        sys.exit(e)
+#     print(len(get_message()))
+#     # try:
+#     #     print(len(message))
+#     #     message = get_message()
+#     #     number = get_numbers()
+#     #     if len(message) == 0 or len(number) == 0:
+#     #         raise Exception("ERROR: message or number is not found \n hint: Must the file of message name is message and number file name is number")
+#     # # COMMit that becuse nake the random messages to sent
+#     # #     if len(number) != len(message):
+#     # #         raise Exception("ERROR: count of files numbers and messages not equal \n hint: Must the file of message name is message and number file name is number")
+    
+#     # except TypeError:
+#     #     sys.exit("You need to create file numbers.txt and file message.txt")
+#     # except Exception as e:
+#     #     sys.exit(e)
     
 
-main()
+# main()
