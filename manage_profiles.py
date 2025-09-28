@@ -17,15 +17,22 @@ def search_about_profiles(number:str) -> Profiles:
 # Profiles.set_profile("201289427756", {'name': "201289427756", 'type_number':"orange"})
 # Profiles.set_profile("201552694323", {'name': "201552694323", 'type_number':"we"})
 # Profiles.set_profile("201010723014", {'name': "201010723014", 'type_number':"vodaphone"})
-# Profiles.set_profile("201280578648", {'name': "201280578648", 'type_number':"orange"})
 # Profiles.set_profile("201001766549", {'name': "201001766549", 'type_number':"vodaphone"})
 
 
-Profiles.set_profile("201203885385", {'name': "201203885385", 'type_number':"orange"})
+Profiles.set_profile("201206226048", {'name': "201206226048", 'type_number':"orange"})
+Profiles.set_profile("201205217358", {'name': "201205217358", 'type_number':"orange"})
+Profiles.set_profile("201280578648", {'name': "201280578648", 'type_number':"orange"})
+Profiles.set_profile("201278846164", {'name': "201278846164", 'type_number':"orange"})
+Profiles.set_profile("201289422415", {'name': "201289422415", 'type_number':"orange"})
+Profiles.set_profile("201289427756", {'name': "201289427756", 'type_number':"orange"})
+Profiles.set_profile("201280576245", {'name': "201280576245", 'type_number':"orange"})
 Profiles.set_profile("201221775260", {'name': "201221775260", 'type_number':"orange"})
-Profiles.set_profile("201507747119", {'name': "201507747119", 'type_number':"orange"})
-Profiles.set_profile("201552436501", {'name': "201552436501", 'type_number':"orange"})
-Profiles.set_profile("201550787747", {'name': "201550787747", 'type_number':"orange"})
+Profiles.set_profile("201507747891", {'name': "201507747891", 'type_number':"we"})
+Profiles.set_profile("201505377476", {'name': "201505377476", 'type_number':"we"})
+Profiles.set_profile("201550787747", {'name': "201550787747", 'type_number':"we"})
+Profiles.set_profile("201552436501", {'name': "201552436501", 'type_number':"we"})
+Profiles.set_profile("201505107747", {'name': "201505107747", 'type_number':"we"})
 
 
 # # Get a profile

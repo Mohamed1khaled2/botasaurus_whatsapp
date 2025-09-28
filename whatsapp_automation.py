@@ -5,6 +5,9 @@ import random
 from time import sleep
 
 start_event = threading.Event()
+stop_event = threading.Event()  # لإيقاف جميع الـ threads في حالة الخطأ
+send_lock = threading.Lock()  # 🔒 قفل عام لمنع الإرسال المتزامن
+
 json_data = read_json()
 
 # حفظ بيانات كل فئة
@@ -36,6 +39,19 @@ def open_whatsapp(driver: Driver, data):
     print(f"[{sender_phone}] Waiting to start")
     start_event.wait()
 
+    # # ✅ مراقبة التايتل في الخلفية
+    # def monitor_title():
+    #     while not stop_event.is_set():
+    #         try:
+    #             current_title = driver.run_js("return document.title;")
+    #             if "واتساب" in current_title or "WhatsApp" in current_title:
+    #                 driver.run_js(f'document.title = "📞 {sender_phone}";')
+    #         except:
+    #             break
+    #         sleep(5)  # راجع كل 5 ثواني
+
+    # threading.Thread(target=monitor_title, daemon=True).start()
+
     # لتحديد التبديل بين الفئات
     if not hasattr(threading.current_thread(), "last_category"):
         threading.current_thread().last_category = "Tarbawy"  # لكي تكون البداية مع Nafs
@@ -52,6 +68,7 @@ def open_whatsapp(driver: Driver, data):
         for attempt in [next_category, "Tarbawy" if next_category == "Nafs" else "Nafs"]:
             cat_data = categories_data[attempt]
             with cat_data["lock"]:
+
                 if cat_data["index"] < len(cat_data["numbers"]):
                     assigned_number = cat_data["numbers"][cat_data["index"]].strip()
                     cat_data["index"] += 1
@@ -64,54 +81,67 @@ def open_whatsapp(driver: Driver, data):
             print(f"[{sender_phone}] ✅ No more numbers to process. Exiting...")
             break
 
-        print(f"[{selected_category}] {sender_phone} sending to {assigned_number}")
+        print(f"[{selected_category}] {sender_phone} preparing to send to {assigned_number}")
 
         try:
-            # افتح المحادثة
-            driver.get_element_containing_text("(You)", wait=Wait.VERY_LONG).click()
-            driver.wait_for_element(selector=json_data['input_filed']).click()
+            with send_lock:  # ✅ 🔒 القفل العام هنا
+                # افتح المحادثة
+                driver.get_element_containing_text("(You)", wait=Wait.VERY_LONG).click()
+                driver.wait_for_element(selector=json_data['input_filed']).click()
 
-            write_message(driver, f"https://web.whatsapp.com/send?phone={assigned_number}")
-            sleep(random.uniform(1, 3))
+                write_message(driver, f"https://web.whatsapp.com/send?phone={assigned_number}")
+                sleep(random.uniform(1, 3))
 
+                try:
+                    driver.wait_for_element(selector=json_data['send_button_1']).click()
+                except:
+                    driver.wait_for_element(selector=json_data['send_button_2']).click()
+
+                sleep(random.uniform(1, 3))
+                driver.get_all_elements_containing_text("web.whatsapp.com")[-1].click()
+                sleep(random.uniform(1, 3))
+
+                if driver.is_element_present(json_data["ok_no_phone"]):
+                    print(f"[{selected_category}] {assigned_number} is not on WhatsApp.")
+                    continue
+
+                msg_to_send = random.choice(messages)
+                write_message(driver, msg_to_send)
+
+                try:
+                    driver.wait_for_element(selector=json_data['send_button_1']).click()
+                except:
+                    driver.wait_for_element(selector=json_data['send_button_2']).click()
+
+                print(f"[{selected_category}] ✅ Message sent to {assigned_number} from [{sender_phone}]")
+                sleep(random.uniform(2, 4))
+
+        except AttributeError:
+            stop_event.set()
             try:
-                driver.wait_for_element(selector=json_data['send_button_1']).click()
+                driver.close()
             except:
-                driver.wait_for_element(selector=json_data['send_button_2']).click()
-
-            sleep(random.uniform(1, 3))
-            driver.get_all_elements_containing_text("web.whatsapp.com")[-1].click()
-            sleep(random.uniform(1, 3))
-
-            if driver.is_element_present(json_data["ok_no_phone"]):
-                print(f"[{selected_category}] {assigned_number} is not on WhatsApp.")
-                continue
-
-            msg_to_send = random.choice(messages)
-            write_message(driver, msg_to_send)
-
-            try:
-                driver.wait_for_element(selector=json_data['send_button_1']).click()
-            except:
-                driver.wait_for_element(selector=json_data['send_button_2']).click()
-
-            print(f"[{selected_category}] ✅ Message sent to {assigned_number} from [{sender_phone}]")
-            sleep(random.uniform(2, 4))
+                pass
 
         except Exception as e:
             print(f"[{selected_category}] ❌ Error with {assigned_number}: {e}")
+            continue
 
 
 def main():
     threads = []
 
     all_senders = [
-        {"phone_number": "201203885385", "profile": "201203885385"},
-        {"phone_number": "201221775260", "profile": "201221775260"}, 
-        {"phone_number": "201507747119", "profile": "201507747119"}, 
-        {"phone_number": "201552436501", "profile": "201552436501"}, 
-        {"phone_number": "201550787747", "profile": "201550787747"}, 
-        
+        {"phone_number": "201505377476", "profile": "201505377476"},
+        {"phone_number": "201206226048", "profile": "201206226048"},
+        {"phone_number": "201280578648", "profile": "201280578648"},
+        {"phone_number": "201205217358", "profile": "201205217358"},
+        {"phone_number": "201278846164", "profile": "201278846164"},
+        # {"phone_number": "201206914284", "profile": "201206914284"},
+        {"phone_number": "201289422415", "profile": "201289422415"},
+        # {"phone_number": "201289427756", "profile": "201289427756"},
+        # {"phone_number": "201221775260", "profile": "201221775260"},
+        # {"phone_number": "201280576245", "profile": "201280576245"},
     ]
 
     for sender in all_senders:
