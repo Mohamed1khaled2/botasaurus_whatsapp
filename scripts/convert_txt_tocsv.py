@@ -21,7 +21,7 @@ def check_txt_extension(file_path: list[str]) -> bool:
 
 
 # Function to create a CSV file from numbers in "1.txt"
-def create_csv_file(name_new_file: str):
+def create_csv_file(name_new_file: str, file_path:str):
     # List of all field names for the CSV
     field_names = [
         "Name Prefix",
@@ -68,13 +68,14 @@ def create_csv_file(name_new_file: str):
         dict_field_name.update({filed_name: ""})
 
     # Read numbers from "1.txt" and prepare client data
-    with open("1.txt", "r") as txt:
+    with open(file_path, "r") as txt:
         clients = []
         names = ["Cn25"]
         for number in txt.readlines():
+            number = number.removesuffix("\n")
             client = dict_field_name.copy()
             client["First Name"] = names[0]
-            client["Phone 1 - Value"] = number.removesuffix("\n")
+            client["Phone 1 - Value"] = number
             clients.append(client)
 
     # Write client data to a new CSV file
@@ -89,14 +90,14 @@ def main():
     if len(sys.argv) < 2:
         print("Usage: python myscript.py <file_path>")
         input(
-            "\nDrag and drop a file onto the script, or run it with a file path.\nPress Enter to exit..."
+            "\nDrag and drop a file into the script, or run it with a file path.\nPress Enter to exit..."
         )
         return
 
     file_path = sys.argv[1]
     # Check if file is valid before creating CSV
     if check_txt_extension(file_path) == True:
-        create_csv_file(file_path.split("\\")[-1].split(".")[0])
+        create_csv_file(file_path.split("\\")[-1].split(".")[0], file_path)
     input("\n✅ Done. Press Enter to exit...")
 
 

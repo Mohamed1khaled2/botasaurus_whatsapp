@@ -5,12 +5,10 @@ import random
 from time import sleep
 
 start_event = threading.Event()
-stop_event = threading.Event()  # لإيقاف جميع الـ threads في حالة الخطأ
 send_lock = threading.Lock()  # 🔒 قفل عام لمنع الإرسال المتزامن
-
 json_data = read_json()
 
-# حفظ بيانات كل فئة
+# ✅ حفظ بيانات كل فئة
 categories_data = {
     "Nafs": {
         "numbers": get_numbers("nafs"),
@@ -23,8 +21,20 @@ categories_data = {
         "messages": get_message("tarbawy"),
         "index": 0,
         "lock": threading.Lock()
+    },
+    "Taghzia": {
+        "numbers": get_numbers("taghzia"),
+        "messages": get_message("taghzia"),
+        "index": 0,
+        "lock": threading.Lock()
     }
 }
+
+# ✅ الأرقام الخاصة بفئة التغذية فقط
+nutrition_senders = [
+    "201280578648",
+    "201205217358"
+]
 
 
 @browser(profile=get_profile)
@@ -39,22 +49,16 @@ def open_whatsapp(driver: Driver, data):
     print(f"[{sender_phone}] Waiting to start")
     start_event.wait()
 
-    # # ✅ مراقبة التايتل في الخلفية
-    # def monitor_title():
-    #     while not stop_event.is_set():
-    #         try:
-    #             current_title = driver.run_js("return document.title;")
-    #             if "واتساب" in current_title or "WhatsApp" in current_title:
-    #                 driver.run_js(f'document.title = "📞 {sender_phone}";')
-    #         except:
-    #             break
-    #         sleep(5)  # راجع كل 5 ثواني
-
-    # threading.Thread(target=monitor_title, daemon=True).start()
+    # ✅ لو الرقم من أرقام التغذية → يشتغل على "Taghzia" فقط
+    is_nutrition_sender = sender_phone in nutrition_senders
+    if is_nutrition_sender:
+        categories_order = ["Taghzia"]
+    else:
+        categories_order = ["Nafs", "Tarbawy"]
 
     # لتحديد التبديل بين الفئات
     if not hasattr(threading.current_thread(), "last_category"):
-        threading.current_thread().last_category = "Tarbawy"  # لكي تكون البداية مع Nafs
+        threading.current_thread().last_category = categories_order[0]
 
     while True:
         selected_category = None
@@ -62,13 +66,19 @@ def open_whatsapp(driver: Driver, data):
         messages = []
 
         # حدد الفئة التالية بالتناوب
-        next_category = "Nafs" if threading.current_thread().last_category == "Tarbawy" else "Tarbawy"
+        if len(categories_order) > 1:
+            next_category = (
+                categories_order[0]
+                if threading.current_thread().last_category == categories_order[1]
+                else categories_order[1]
+            )
+        else:
+            next_category = categories_order[0]
 
         # جرّب الفئة المطلوبة أولاً، وإذا فاضية جرّب الأخرى
-        for attempt in [next_category, "Tarbawy" if next_category == "Nafs" else "Nafs"]:
+        for attempt in categories_order:
             cat_data = categories_data[attempt]
             with cat_data["lock"]:
-
                 if cat_data["index"] < len(cat_data["numbers"]):
                     assigned_number = cat_data["numbers"][cat_data["index"]].strip()
                     cat_data["index"] += 1
@@ -85,28 +95,17 @@ def open_whatsapp(driver: Driver, data):
 
         try:
             with send_lock:  # ✅ 🔒 القفل العام هنا
-                # افتح المحادثة
-                driver.get_element_containing_text("(You)", wait=Wait.VERY_LONG).click()
-                driver.wait_for_element(selector=json_data['input_filed']).click()
-
-                write_message(driver, f"https://web.whatsapp.com/send?phone={assigned_number}")
+                driver.get_element_containing_text("Search or start a new chat", wait=Wait.VERY_LONG).click()
+                write_message(driver, f"{assigned_number}", is_message=False)
                 sleep(random.uniform(1, 3))
-
-                try:
-                    driver.wait_for_element(selector=json_data['send_button_1']).click()
-                except:
-                    driver.wait_for_element(selector=json_data['send_button_2']).click()
+                driver.wait_for_element(selector=json_data['first_chat']).click()
 
                 sleep(random.uniform(1, 3))
-                driver.get_all_elements_containing_text("web.whatsapp.com")[-1].click()
-                sleep(random.uniform(1, 3))
-
-                if driver.is_element_present(json_data["ok_no_phone"]):
-                    print(f"[{selected_category}] {assigned_number} is not on WhatsApp.")
-                    continue
+                driver.wait_for_element(selector=json_data['type_message_ele']).click()
 
                 msg_to_send = random.choice(messages)
-                write_message(driver, msg_to_send)
+                write_message(driver, msg_to_send, is_message=True)
+                sleep(random.uniform(1, 3))
 
                 try:
                     driver.wait_for_element(selector=json_data['send_button_1']).click()
@@ -117,32 +116,42 @@ def open_whatsapp(driver: Driver, data):
                 sleep(random.uniform(2, 4))
 
         except AttributeError:
-            stop_event.set()
+            # ✅ BAN detected → رجع الرقم مكانه وما يضيعش
+            print(f"[{selected_category}] 🚫 BAN detected for {sender_phone}. Closing driver...")
+            if assigned_number:
+                cat_data = categories_data[selected_category]
+                with cat_data["lock"]:
+                    cat_data["index"] -= 1
+                    if cat_data["index"] < 0:
+                        cat_data["index"] = 0
             try:
                 driver.close()
             except:
                 pass
+            break  # ❌ يخرج من اللوب لهذا المرسل فقط
 
         except Exception as e:
             print(f"[{selected_category}] ❌ Error with {assigned_number}: {e}")
+            # ✅ في أي خطأ تاني → رجع الرقم مكانه
+            if assigned_number:
+                cat_data = categories_data[selected_category]
+                with cat_data["lock"]:
+                    cat_data["index"] -= 1
+                    if cat_data["index"] < 0:
+                        cat_data["index"] = 0
             continue
 
 
 def main():
     threads = []
 
+    # * !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! بنحط هنا الارقام اللي هنشغلها
     all_senders = [
-        {"phone_number": "201505377476", "profile": "201505377476"},
-        {"phone_number": "201206226048", "profile": "201206226048"},
-        {"phone_number": "201280578648", "profile": "201280578648"},
-        {"phone_number": "201205217358", "profile": "201205217358"},
-        {"phone_number": "201278846164", "profile": "201278846164"},
-        # {"phone_number": "201206914284", "profile": "201206914284"},
-        {"phone_number": "201289422415", "profile": "201289422415"},
-        # {"phone_number": "201289427756", "profile": "201289427756"},
-        # {"phone_number": "201221775260", "profile": "201221775260"},
-        # {"phone_number": "201280576245", "profile": "201280576245"},
+        {"phone_number": "201552694323", "profile": "201552694323"},
+        {"phone_number": "201280578648", "profile": "201280578648"},  # تغذية
+        {"phone_number": "201205217358", "profile": "201205217358"},  # تغذية
     ]
+    # * !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
     for sender in all_senders:
         data = {

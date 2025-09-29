@@ -1,6 +1,5 @@
 from botasaurus.browser import Driver
 import os
-
 import json
 import time
 import pyautogui
@@ -48,9 +47,9 @@ def get_message(folder_path) -> list[str]:
 
 
 
-def write_message(driver: Driver, message: str):
+def write_message(driver: Driver, message: str, is_message:bool):
     driver.run_js(f'''
-        const input = document.querySelector('div[contenteditable="true"][role="textbox"][data-tab="10"]');
+        const input = document.querySelector('div[contenteditable="true"][role="textbox"][data-tab="{'10' if is_message else '3'}"]');
         const dataTransfer = new DataTransfer();
         dataTransfer.setData('text', `{message}`);
 
