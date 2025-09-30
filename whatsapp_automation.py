@@ -32,9 +32,10 @@ categories_data = {
 
 # ✅ الأرقام الخاصة بفئة التغذية فقط
 nutrition_senders = [
-    "201280578648",
-    "201205217358"
+    "201289427787", 
+    "201208978327"
 ]
+
 
 
 @browser(profile=get_profile)
@@ -75,8 +76,8 @@ def open_whatsapp(driver: Driver, data):
         else:
             next_category = categories_order[0]
 
-        # جرّب الفئة المطلوبة أولاً، وإذا فاضية جرّب الأخرى
-        for attempt in categories_order:
+        # ✅ جرب الفئة المطلوبة أولاً، وإذا فاضية جرب الأخرى
+        for attempt in [next_category] + [c for c in categories_order if c != next_category]:
             cat_data = categories_data[attempt]
             with cat_data["lock"]:
                 if cat_data["index"] < len(cat_data["numbers"]):
@@ -98,8 +99,15 @@ def open_whatsapp(driver: Driver, data):
                 driver.get_element_containing_text("Search or start a new chat", wait=Wait.VERY_LONG).click()
                 write_message(driver, f"{assigned_number}", is_message=False)
                 sleep(random.uniform(1, 3))
-                driver.wait_for_element(selector=json_data['first_chat']).click()
-
+                first_chat = driver.is_element_present(selector=json_data['first_chat'])    
+                
+                if first_chat :
+                    driver.wait_for_element(selector=json_data['first_chat']).click()
+                else :
+                    driver.wait_for_element(selector="#side > div._ak9t > div > div._ai04 > span > button", wait=Wait.VERY_LONG).click()
+                    continue
+                
+                
                 sleep(random.uniform(1, 3))
                 driver.wait_for_element(selector=json_data['type_message_ele']).click()
 
@@ -132,13 +140,6 @@ def open_whatsapp(driver: Driver, data):
 
         except Exception as e:
             print(f"[{selected_category}] ❌ Error with {assigned_number}: {e}")
-            # ✅ في أي خطأ تاني → رجع الرقم مكانه
-            if assigned_number:
-                cat_data = categories_data[selected_category]
-                with cat_data["lock"]:
-                    cat_data["index"] -= 1
-                    if cat_data["index"] < 0:
-                        cat_data["index"] = 0
             continue
 
 
@@ -147,9 +148,10 @@ def main():
 
     # * !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! بنحط هنا الارقام اللي هنشغلها
     all_senders = [
-        {"phone_number": "201552694323", "profile": "201552694323"},
-        {"phone_number": "201280578648", "profile": "201280578648"},  # تغذية
-        {"phone_number": "201205217358", "profile": "201205217358"},  # تغذية
+        {"phone_number": "201552436501", "profile": "201552436501"},
+        {"phone_number": "201505377476", "profile": "201505377476"},
+        {"phone_number": "201289427787", "profile": "201289427787"},  # تغذية
+        {"phone_number": "201208978327", "profile": "201208978327"},  # تغذية
     ]
     # * !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 

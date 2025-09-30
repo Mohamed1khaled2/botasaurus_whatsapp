@@ -33,7 +33,9 @@ def search_about_profiles(number:str) -> Profiles:
 # Profiles.set_profile("201550787747", {'name': "201550787747", 'type_number':"we"})
 # Profiles.set_profile("201552436501", {'name': "201552436501", 'type_number':"we"})
 # Profiles.set_profile("201505107747", {'name': "201505107747", 'type_number':"we"})
-Profiles.set_profile("201552694323", {'name': "201552694323", 'type_number':"we"})
+Profiles.set_profile("201552436501", {'name': "201552436501", 'type_number':"we"})
+Profiles.set_profile("201208751824", {'name': "201208751824", 'type_number':"orange"})
+Profiles.set_profile("201289427787", {'name': "201289427787", 'type_number':"orange"})
 
 
 # # Get a profile
