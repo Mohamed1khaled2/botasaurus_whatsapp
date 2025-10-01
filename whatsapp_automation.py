@@ -34,6 +34,10 @@ categories_data = {
 nutrition_senders = get_all_sender_taghzia_number()
 
 
+class NotFoundNumber(Exception):
+    pass
+
+
 @browser(profile=get_profile)
 def open_whatsapp(driver: Driver, data):
     sender_phone = data["phone_number"]
