@@ -43,7 +43,7 @@ def open_whatsapp(driver: Driver, data):
     sender_phone = data["phone_number"]
 
     driver.enable_human_mode()
-    driver.google_get("https://web.whatsapp.com/")
+    driver.google_get("https://web.whatsapp.com/", timeout=180)
     sleep(random.uniform(5, 10))
     driver.run_js(f'document.title = "📞 {sender_phone}";')
 
