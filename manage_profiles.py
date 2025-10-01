@@ -18,8 +18,6 @@ def search_about_profiles(number:str) -> Profiles:
 # Profiles.set_profile("201552694323", {'name': "201552694323", 'type_number':"we"})
 # Profiles.set_profile("201010723014", {'name': "201010723014", 'type_number':"vodaphone"})
 # Profiles.set_profile("201001766549", {'name': "201001766549", 'type_number':"vodaphone"})
-
-
 # Profiles.set_profile("201206226048", {'name': "201206226048", 'type_number':"orange"})
 # Profiles.set_profile("201205217358", {'name': "201205217358", 'type_number':"orange"})
 # Profiles.set_profile("201280578648", {'name': "201280578648", 'type_number':"orange"})
@@ -33,9 +31,15 @@ def search_about_profiles(number:str) -> Profiles:
 # Profiles.set_profile("201550787747", {'name': "201550787747", 'type_number':"we"})
 # Profiles.set_profile("201552436501", {'name': "201552436501", 'type_number':"we"})
 # Profiles.set_profile("201505107747", {'name': "201505107747", 'type_number':"we"})
-Profiles.set_profile("201552436501", {'name': "201552436501", 'type_number':"we"})
-Profiles.set_profile("201208751824", {'name': "201208751824", 'type_number':"orange"})
-Profiles.set_profile("201289427787", {'name': "201289427787", 'type_number':"orange"})
+# Profiles.set_profile("201552436501", {'name': "201552436501", 'type_number':"we"})
+# Profiles.set_profile("201208751824", {'name': "201208751824", 'type_number':"orange"})
+
+from helper_functions import *
+
+for _ in get_all_sender_numbers:
+    Profiles.set_profile(_, {'name': _})
+
+
 
 
 # # Get a profile

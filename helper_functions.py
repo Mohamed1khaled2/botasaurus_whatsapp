@@ -4,8 +4,7 @@ import json
 import time
 import pyautogui
 import random   
-
-
+import mange_run 
 
 def get_numbers(folder_path) -> list[str]:
     all_numbers = []
@@ -84,7 +83,25 @@ def moving_for_duration(duration_seconds):
         time.sleep(1)  
         
     print("Time finished")
+    
 
+
+
+
+
+def get_all_sender_numbers():
+    data = []
+    for number in mange_run.all_sener_numbers:
+        if number == '':
+            continue
+        data.append({
+            "phone_number": number, 
+            "profile":number})
+    return data
+
+
+def get_all_sender_taghzia_number():
+    return mange_run.taghzia_number
 
 # def main():
     

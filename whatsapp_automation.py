@@ -31,11 +31,7 @@ categories_data = {
 }
 
 # ✅ الأرقام الخاصة بفئة التغذية فقط
-nutrition_senders = [
-    "201289427787", 
-    "201208978327"
-]
-
+nutrition_senders = get_all_sender_taghzia_number()
 
 
 @browser(profile=get_profile)
@@ -98,7 +94,7 @@ def open_whatsapp(driver: Driver, data):
             with send_lock:  # ✅ 🔒 القفل العام هنا
                 driver.get_element_containing_text("Search or start a new chat", wait=Wait.VERY_LONG).click()
                 write_message(driver, f"{assigned_number}", is_message=False)
-                sleep(random.uniform(1, 3))
+                sleep(random.uniform(3, 5))
                 first_chat = driver.is_element_present(selector=json_data['first_chat'])    
                 
                 if first_chat :
@@ -108,12 +104,12 @@ def open_whatsapp(driver: Driver, data):
                     continue
                 
                 
-                sleep(random.uniform(1, 3))
+                sleep(random.uniform(3, 5))
                 driver.wait_for_element(selector=json_data['type_message_ele']).click()
 
                 msg_to_send = random.choice(messages)
                 write_message(driver, msg_to_send, is_message=True)
-                sleep(random.uniform(1, 3))
+                sleep(random.uniform(3, 5))
 
                 try:
                     driver.wait_for_element(selector=json_data['send_button_1']).click()
@@ -121,7 +117,7 @@ def open_whatsapp(driver: Driver, data):
                     driver.wait_for_element(selector=json_data['send_button_2']).click()
 
                 print(f"[{selected_category}] ✅ Message sent to {assigned_number} from [{sender_phone}]")
-                sleep(random.uniform(2, 4))
+                sleep(random.uniform(3, 5))
 
         except AttributeError:
             # ✅ BAN detected → رجع الرقم مكانه وما يضيعش
@@ -147,12 +143,7 @@ def main():
     threads = []
 
     # * !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! بنحط هنا الارقام اللي هنشغلها
-    all_senders = [
-        {"phone_number": "201552436501", "profile": "201552436501"},
-        {"phone_number": "201505377476", "profile": "201505377476"},
-        {"phone_number": "201289427787", "profile": "201289427787"},  # تغذية
-        {"phone_number": "201208978327", "profile": "201208978327"},  # تغذية
-    ]
+    all_senders = get_all_sender_numbers()
     # * !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
     for sender in all_senders:
