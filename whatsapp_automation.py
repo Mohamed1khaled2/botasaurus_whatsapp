@@ -31,12 +31,7 @@ categories_data = {
 }
 
 # ✅ الأرقام الخاصة بفئة التغذية فقط
-nutrition_senders = [
-"201552694323"
-]
-
-class NotFoundNumber(Exception):
-    pass
+nutrition_senders = get_all_sender_taghzia_number()
 
 
 @browser(profile=get_profile)
@@ -111,12 +106,12 @@ def open_whatsapp(driver: Driver, data):
                     raise NotFoundNumber()
                 
                 
-                sleep(random.uniform(1, 3))
+                sleep(random.uniform(3, 5))
                 driver.wait_for_element(selector=json_data['type_message_ele']).click()
 
                 msg_to_send = random.choice(messages)
                 write_message(driver, msg_to_send, is_message=True)
-                sleep(random.uniform(1, 3))
+                sleep(random.uniform(3, 5))
 
                 try:
                     driver.wait_for_element(selector=json_data['send_button_1']).click()
@@ -124,7 +119,7 @@ def open_whatsapp(driver: Driver, data):
                     driver.wait_for_element(selector=json_data['send_button_2']).click()
 
                 print(f"[{selected_category}] ✅ Message sent to {assigned_number} from [{sender_phone}]")
-                sleep(random.uniform(2, 4))
+                sleep(random.uniform(3, 5))
 
         except NotFoundNumber:
             print("Not Found nufffmber")
@@ -153,9 +148,7 @@ def main():
     threads = []
 
     # * !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! بنحط هنا الارقام اللي هنشغلها
-    all_senders = [
-        {"phone_number": "201552694323", "profile": "201552694323"},
-    ]
+    all_senders = get_all_sender_numbers()
     # * !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
     for sender in all_senders:
