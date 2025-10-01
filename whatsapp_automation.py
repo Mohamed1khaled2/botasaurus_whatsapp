@@ -32,10 +32,11 @@ categories_data = {
 
 # ✅ الأرقام الخاصة بفئة التغذية فقط
 nutrition_senders = [
-    "201289427787", 
-    "201208978327"
+"201552694323"
 ]
 
+class NotFoundNumber(Exception):
+    pass
 
 
 @browser(profile=get_profile)
@@ -99,13 +100,15 @@ def open_whatsapp(driver: Driver, data):
                 driver.get_element_containing_text("Search or start a new chat", wait=Wait.VERY_LONG).click()
                 write_message(driver, f"{assigned_number}", is_message=False)
                 sleep(random.uniform(1, 3))
+                
+                # handle expetion 
                 first_chat = driver.is_element_present(selector=json_data['first_chat'])    
                 
                 if first_chat :
                     driver.wait_for_element(selector=json_data['first_chat']).click()
                 else :
-                    driver.wait_for_element(selector="#side > div._ak9t > div > div._ai04 > span > button", wait=Wait.VERY_LONG).click()
-                    continue
+                    driver.wait_for_element(selector=json_data['clear_button'], wait=Wait.VERY_LONG).click()
+                    raise NotFoundNumber()
                 
                 
                 sleep(random.uniform(1, 3))
@@ -123,6 +126,9 @@ def open_whatsapp(driver: Driver, data):
                 print(f"[{selected_category}] ✅ Message sent to {assigned_number} from [{sender_phone}]")
                 sleep(random.uniform(2, 4))
 
+        except NotFoundNumber:
+            print("Not Found nufffmber")
+        
         except AttributeError:
             # ✅ BAN detected → رجع الرقم مكانه وما يضيعش
             print(f"[{selected_category}] 🚫 BAN detected for {sender_phone}. Closing driver...")
@@ -148,10 +154,7 @@ def main():
 
     # * !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! بنحط هنا الارقام اللي هنشغلها
     all_senders = [
-        {"phone_number": "201552436501", "profile": "201552436501"},
-        {"phone_number": "201505377476", "profile": "201505377476"},
-        {"phone_number": "201289427787", "profile": "201289427787"},  # تغذية
-        {"phone_number": "201208978327", "profile": "201208978327"},  # تغذية
+        {"phone_number": "201552694323", "profile": "201552694323"},
     ]
     # * !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
