@@ -64,6 +64,10 @@ categories_data = {
 nutrition_senders = get_all_sender_taghzia_number()
 
 
+class NotFoundNumber(Exception):
+    pass
+
+
 @browser(profile=get_profile)
 def open_whatsapp(driver: Driver, data):
     
@@ -125,14 +129,16 @@ def open_whatsapp(driver: Driver, data):
             with send_lock:  # ✅ 🔒 القفل العام هنا
                 driver.get_element_containing_text("Search or start a new chat", wait=Wait.VERY_LONG).click()
                 write_message(driver, f"{assigned_number}", is_message=False)
-                sleep(random.uniform(3, 5))
+                sleep(random.uniform(1, 3))
+                
+                # handle expetion 
                 first_chat = driver.is_element_present(selector=json_data['first_chat'])    
                 
                 if first_chat :
                     driver.wait_for_element(selector=json_data['first_chat']).click()
                 else :
-                    driver.wait_for_element(selector="#side > div._ak9t > div > div._ai04 > span > button", wait=Wait.VERY_LONG).click()
-                    continue
+                    driver.wait_for_element(selector=json_data['clear_button'], wait=Wait.VERY_LONG).click()
+                    raise NotFoundNumber()
                 
                 
                 sleep(random.uniform(3, 5))
@@ -150,6 +156,9 @@ def open_whatsapp(driver: Driver, data):
                 print(f"[{selected_category}] ✅ Message sent to {assigned_number} from [{sender_phone}]")
                 sleep(random.uniform(3, 5))
 
+        except NotFoundNumber:
+            print("Not Found nufffmber")
+        
         except AttributeError:
             # ✅ BAN detected → رجع الرقم مكانه وما يضيعش
             print(f"[{selected_category}] 🚫 BAN detected for {sender_phone}. Closing driver...")
