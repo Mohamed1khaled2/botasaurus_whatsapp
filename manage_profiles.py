@@ -1,13 +1,40 @@
 from botasaurus.profiles import Profiles
+import json
 
 
-def search_about_profiles(number:str) -> Profiles:
-    profile = Profiles.get_profile(number)
+class ManageFiles:
+    def __init__(self):
+        pass
     
+
+    def search_about_profiles(self, number:str) -> Profiles:
+        profile = Profiles.get_profile(number)
+
+        return profile
     
-    print(type(profile))
-    
-    
+
+    def get_profiles(self):
+        # Get all profiles
+        self.all_profiles = Profiles.get_profiles()
+        return json.dumps(self.all_profiles, indent=4)
+        
+    def add_profile(self, number:str):
+            
+        if self.search_about_profiles(number) != None:
+            
+            info_cards = {
+                    'vodafone':"2010", 
+                    "etisalat":"2011",
+                    "orange":"2012", 
+                    "we":"2015"}              
+            for k, v in info_cards.items():
+                if v == number[0:4]:
+                    Profiles.set_profile(number, {'name':number, 'type_number':k})
+        else:
+            return ("Profile Created")
+        
+    def del_profile(self, number:str):
+        Profiles.delete_profile(number)
 
 # Profiles.set_profile('201289422813', {'name': '201289422813', 'type_number': "orange"})
 # Profiles.set_profile('201103738707', {'name': '201103738707', 'type_number': "etisalat"})
@@ -34,10 +61,10 @@ def search_about_profiles(number:str) -> Profiles:
 # Profiles.set_profile("201552436501", {'name': "201552436501", 'type_number':"we"})
 # Profiles.set_profile("201208751824", {'name': "201208751824", 'type_number':"orange"})
 
-from helper_functions import *
+# from helper_functions import *
 
-for _ in get_all_sender_numbers:
-    Profiles.set_profile(_, {'name': _})
+# for _ in get_all_sender_numbers:
+#     Profiles.set_profile(_, {'name': _})
 
 
 
@@ -46,8 +73,7 @@ for _ in get_all_sender_numbers:
 # profile = Profiles.get_profile('201289422813')
 # print(profile)  # Output: {'name': 'Amit Sharma', 'age': 30}
 
-# # Get all profiles
-# all_profiles = Profiles.get_profiles()
+
 # print(all_profiles)  # Output: [{'name': 'Amit Sharma', 'age': 30}, {'name': 'Rahul Verma', 'age': 30}]
 
 
@@ -55,4 +81,3 @@ for _ in get_all_sender_numbers:
 
 
 # Delete a profile
-# Profiles.delete_profile('amit')
