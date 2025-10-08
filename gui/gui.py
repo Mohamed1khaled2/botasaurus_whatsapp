@@ -1,10 +1,56 @@
 import customtkinter as ctk
 from PIL import Image
-from tkinter import ttk, END, StringVar, DoubleVar, PhotoImage
+from tkinter import Listbox, ttk, END, StringVar, DoubleVar, PhotoImage
 from threading import Thread
 import time
-import tkinter as tk
-from view_tree_data import CheckBoxTreeview
+from view_tree_data import ModernCTkTable
+import ctypes
+
+
+class MyTabView(ctk.CTkTabview):
+    def __init__(self, master, **kwargs):
+        super().__init__(master, **kwargs)
+
+        # create tabs
+        self.channels_tap = self.add("Channels")
+        self.sender_tap = self.add("Sender")
+        self.messages = self.add("Messages")
+
+        #* channels tap
+        self.channels_tap.columnconfigure((0,1), weight=1)
+        self.channels_tap.rowconfigure(0, weight=1)
+        self.channels_tap.rowconfigure(1, weight=3)
+        self.channels_tap.rowconfigure(2, weight=1)
+
+        ctk.CTkLabel(self.channels_tap, text="Row 0", fg_color="red")
+        
+        # self.option_menu = ctk.CTkOptionMenu(self.channels_tap, values=['we', 'vodaphone', 'etitsalt', 'orange'], button_hover_color='green')
+        # self.option_menu.grid(row=0, column=0)
+        
+        headers = ["ID", "Name", "Job"]
+        data = [
+        ["1", "Ahmed", "Developer"],
+        ["2", "Mona", "Designer"],
+        ["3", "Khaled", "Manager"],
+        ["4", "Sara", "HR"],
+        ["5", "Ali", "Tester"]
+    ]
+
+
+        self.table = ModernCTkTable(self.channels_tap, data=data, headers=headers).grid(row=1, column=0,columnspan=2,  sticky="nsew")
+
+        # إنشاء الجدول
+        # self.table = TreeviewWithCheckboxes(
+        #     self.channels_tap, 
+        #     data=data,
+        #     img_checked_path=r"D:\Mada\devlopment\botasaurus_whatsapp-main\gui\assets\checked.png",
+        #     img_unchecked_path=r"D:\Mada\devlopment\botasaurus_whatsapp-main\gui\assets\unchecked.png"
+        # ).grid(row=1, column=0,columnspan=2,  sticky="nsew")
+        
+        
+        
+        ctk.CTkLabel(self.channels_tap, text="Row 2", fg_color="blue").grid(row=2, column=0, sticky="nsew")
+
 
 
 
@@ -15,19 +61,27 @@ class SenderWhatsappWindow(ctk.CTkToplevel):
 
         self.parent = parent  # نخزن المرجع للـ App
 
-        self.geometry("400x300")
+        self.geometry("800x600")
         self.title(f"🚀 Sender Whatsapp {self.name}")
-
-        label = ctk.CTkLabel(
-            self, text="هنا إعدادات البرنامج", fg_color="blue", text_color="white"
-        )
-        label.pack(padx=20, pady=20)
-
-        save_button = ctk.CTkButton(self, text="حفظ التغييرات")
-        save_button.pack(pady=10)
-
+        
+        # ✅ خليها تظهر مستقلة في شريط المهام
+        hwnd = ctypes.windll.user32.GetParent(self.winfo_id())
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(f"altmyz.{self.name}.window")
+        ctypes.windll.user32.SetWindowLongW(hwnd, -8, 0)
+        
+        self.attributes('-topmost', True)
+        self.focus_force()
+        self.lift()
+        
+        self.after(200, lambda: self.attributes('-topmost', False))
+              
+        self.tab_view = MyTabView(master=self)
+        self.tab_view.pack(fill="both", expand=True, padx=20, pady=20)
+        
         # هنا بنحدد إيه اللي يحصل لما النافذة تتقفل
         self.protocol("WM_DELETE_WINDOW", self.on_close)
+        
+
 
     def on_close(self):
         """امسح النافذة من قاموس parent بعد ما تتقفل"""
@@ -47,16 +101,28 @@ class App(ctk.CTk):
         super().__init__(*args, **kwargs)
         self._set_appearance_mode('System')
         self.str_var = StringVar() 
-        self.geometry("1200x600")
+        
+        self.available_tabs = []
+        self.windows = {}
+        
+        self.geometry("400x300")
         self.title("Altmyz Home")
         
         
+        self.list_box_ = Listbox(self, height = 10, 
+                  width = 15, 
+                  bg = "grey",
+                  activestyle = 'dotbox', 
+                  font = "Helvetica",
+                  fg = "yellow")
+
+        # self.list_box_.place(x=10, y=20)
         
         
         # * frame
-        self.frame_one = ctk.CTkFrame(self, width=350, height=200, corner_radius=10)
+        # self.frame_one = ctk.CTkFrame(self, width=350, height=200, corner_radius=10)
         # self.frame_one.place(x=10, y=20)
-        self.frame_one.pack(padx=20, pady=10, fill='x')
+        # self.frame_one.pack(padx=20, pady=10, fill='x')
         # self.frame_one.grid(row=0, column=0)
         # self.frame_two = customtkinter.CTkFrame(self, width=350, height=200)  
         # self.frame_two.grid(row=0, column=1, padx=10)
@@ -118,15 +184,20 @@ class App(ctk.CTk):
         # self.prog.pack(pady=20)  
 
         # * option Menu
-        self.button_pressed = ctk.CTkButton(self.frame_one, text="Press Me !", command=self._get_option)
-        self.button_pressed.pack(pady=20)  
-        self.option_menu = ctk.CTkOptionMenu(self.frame_one, values=['we', 'vodaphone', 'etitsalt', 'orange'], button_hover_color='green', command=self.opt_fun)
-        self.option_menu.pack(pady=20)  
-                
-        
+        # self.button_pressed = ctk.CTkButton(self.frame_one, text="Press Me !", command=self._get_option)
+        # self.button_pressed.pack(pady=20)  
+        # self.option_menu = ctk.CTkOptionMenu(self.frame_one, values=['we', 'vodaphone', 'etitsalt', 'orange'], button_hover_color='green', command=self.opt_fun)
+        # self.option_menu.pack(pady=20)  
         
     
 
+        
+
+        self.button_pressed = ctk.CTkButton(self, text="Open Whatsapp Sender 🚀",height=50, fg_color='green', font=( 'arial', 22, "bold"), command=self.open_sender_whatsapp_window)
+        self.button_pressed.pack(expand='true')  
+        
+        
+        
         # ============= جدول البيانات (Excel-like) =============
         
         data = [
@@ -136,20 +207,20 @@ class App(ctk.CTk):
         ]
 
         # إنشاء الجدول
-        self.table = CheckBoxTreeview(
-            self, 
-            data=data,
-            img_checked_path=r"D:\Mada\devlopment\botasaurus_whatsapp-main\gui\assets\checked.png",
-            img_unchecked_path=r"D:\Mada\devlopment\botasaurus_whatsapp-main\gui\assets\unchecked.png"
-        )
+        # self.table = TreeviewWithCheckboxes(
+        #     self, 
+        #     data=data,
+        #     img_checked_path=r"D:\Mada\devlopment\botasaurus_whatsapp-main\gui\assets\checked.png",
+        #     img_unchecked_path=r"D:\Mada\devlopment\botasaurus_whatsapp-main\gui\assets\unchecked.png"
+        # )
 
-        self.table.pack(fill="both", expand=True, padx=20, pady=20)
+        # self.table.pack(fill="both", expand=True, padx=20, pady=20)
 
 
 
         # زرار يطبع الصفوف المتعلمة
-        btn = ctk.CTkButton(self, text="📌 Print Selected", command=self.print_selected)
-        btn.pack(pady=10)
+        # btn = ctk.CTkButton(self, text="📌 Print Selected", command=self.print_selected)
+        # btn.pack(pady=10)
 
 
 
@@ -185,19 +256,14 @@ class App(ctk.CTk):
 
         tab_num = self.available_tabs.pop(0)  # خد أول رقم متاح   
         key = f"tap{tab_num}"
+        self.windows[key] = SenderWhatsappWindow(self, name=f"Tab{tab_num}")
 
-        if key not in self.windows or not self.windows[key].winfo_exists():
-            self.windows[key] = SenderWhatsappWindow(self, name=f"Tab{tab_num}")
-        else:
-            self.windows[key].lift()
-            self.windows[key].focus_force()
-            
     def switch_mode(self):
         print(self._get_appearance_mode())
         if self.switch_mode.get() and self._get_appearance_mode() != 'dark':
             self._set_appearance_mode('dark')
             
-        elif self.switch_mode.get() == 0 :
+        elif self.switch_mode.get() == 0 :  
             self._set_appearance_mode('light')
     
     

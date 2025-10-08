@@ -4,6 +4,36 @@ import threading
 import random
 from time import sleep
 
+
+
+
+
+
+"""
+    
+# self.count_sending
+# self.last_opened
+# self.
+
+
+
+# Class().run_automation([number1, number2, .....])
+
+
+    
+"""
+
+
+
+
+
+
+
+
+
+
+
+
 start_event = threading.Event()
 send_lock = threading.Lock()  # 🔒 قفل عام لمنع الإرسال المتزامن
 json_data = read_json()
@@ -40,6 +70,7 @@ class NotFoundNumber(Exception):
 
 @browser(profile=get_profile)
 def open_whatsapp(driver: Driver, data):
+    
     sender_phone = data["phone_number"]
 
     driver.enable_human_mode()
@@ -151,7 +182,8 @@ def open_whatsapp(driver: Driver, data):
 def main():
     threads = []
 
-    # * !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! بنحط هنا الارقام اللي هنشغلها
+    # * !!!!!!!!!!!!!
+    # !!!!!!!!!!!!!!!!!! بنحط هنا الارقام اللي هنشغلها
     all_senders = get_all_sender_numbers()
     # * !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
@@ -173,3 +205,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
