@@ -5,15 +5,18 @@ class ModernCTkTable(ctk.CTkFrame):
     def __init__(self, parent, data, headers, *args, **kwargs):
         super().__init__(parent, *args, **kwargs)
 
+        self.original_data = data[:]  
         self.data = data
-        self.headers = [""] + headers  # عمود checkbox
+        self.headers = [""] + headers
         self.checked_state = {}
+
+        self.table_frame = ctk.CTkFrame(self)
+        self.table_frame.pack(fill="both", expand=True, padx=10, pady=(0, 10))
 
         self.setup_widgets()
         self.insert_data()
         self.update_scrollbar_visibility()
 
-        # تحديث scrollbar عند تغيير الحجم
         self.tree.bind("<Configure>", lambda e: self.update_scrollbar_visibility())
         self.bind("<Configure>", lambda e: self.update_scrollbar_visibility())
 
@@ -21,60 +24,97 @@ class ModernCTkTable(ctk.CTkFrame):
         style = ttk.Style()
         style.theme_use('clam')
 
-        # ألوان ثابتة للثيم الداكن
-        bg_color = "#2b2b2b"         # خلفية الصفوف
-        fg_color = "#e0e0e0"         # لون النص
-        heading_bg = "#1f1f1f"       # خلفية رؤوس الأعمدة
-        heading_fg = "#f0f0f0"       # لون نص الرؤوس
-        select_bg = "#4a90e2"        # لون تحديد الصف
-        select_fg = "#ffffff"
-
         style.configure("Treeview",
-                        background=bg_color,
-                        foreground=fg_color,
+                        background="#2b2b2b",
+                        foreground="#e0e0e0",
                         rowheight=30,
-                        fieldbackground=bg_color,
+                        fieldbackground="#2b2b2b",
                         font=("Segoe UI", 10))
 
         style.configure("Treeview.Heading",
-                        background=heading_bg,
-                        foreground=heading_fg,
+                        background="#1f1f1f",
+                        foreground="#f0f0f0",
                         font=("Segoe UI", 11, "bold"),
                         relief="flat")
 
         style.map("Treeview.Heading",
-                background=[("active", heading_bg)],
-                relief=[("active", "flat")])
+                  background=[("active", "#1f1f1f")],
+                  relief=[("active", "flat")])
         style.map("Treeview",
-                  background=[("selected", select_bg)],
-                  foreground=[("selected", select_fg)])
+                  background=[("selected", "#4a90e2")],
+                  foreground=[("selected", "#ffffff")])
 
-        self.tree = ttk.Treeview(self, columns=self.headers, show="headings", selectmode="browse")
+        self.tree = ttk.Treeview(self.table_frame, columns=self.headers, show="headings", selectmode="browse")
         self.tree.pack(fill="both", expand=True, side="left")
 
         for i, header in enumerate(self.headers):
             width = 40 if i == 0 else 150
-            anchor = "center" if i == 0 else "w"
-            self.tree.heading(header, text=header)
-            self.tree.column(header, width=width, anchor=anchor)
+            self.tree.heading(header, text=header, anchor="center")
+            self.tree.column(header, width=width, anchor="center")
 
-        self.vsb = ctk.CTkScrollbar(self, orientation="vertical", command=self.tree.yview)
-        self.vsb.pack_forget()  # مخفية بشكل افتراضي
+        self.vsb = ctk.CTkScrollbar(self.table_frame, orientation="vertical", command=self.tree.yview)
+        self.vsb.pack_forget()
         self.tree.configure(yscrollcommand=self.vsb.set)
 
-        # استخدام ألوان ثابتة للـ tags
         self.tree.tag_configure('odd', background="#303030")
         self.tree.tag_configure('even', background="#232323")
 
         self.tree.bind("<Button-1>", self.on_click)
 
     def insert_data(self):
+        self.tree.delete(*self.tree.get_children())
+        self.checked_state.clear()
+
         for index, row in enumerate(self.data):
             checkbox = "⬜"
             values = [checkbox] + list(row)
             tag = 'even' if index % 2 == 0 else 'odd'
             iid = self.tree.insert("", "end", values=values, tags=(tag,))
             self.checked_state[iid] = False
+
+    def update_data(self, new_data):
+        """استبدال البيانات القديمة بالجديدة"""
+        self.data = new_data
+        self.insert_data()
+        self.update_scrollbar_visibility()
+
+    def add_data(self, phone_numbers):
+        """
+        تضيف رقم أو أكتر للجدول الحالي.
+        - phone_numbers ممكن يكون رقم واحد أو list من الأرقام.
+        - الـ ID بيتولّد تلقائي.
+        - Last Used بيتساب فاضي أو بـ "#" مؤقتًا.
+        """
+        if isinstance(phone_numbers, (str, int)):
+            phone_numbers = [phone_numbers]
+
+        # تحديد آخر ID موجود
+        if self.data:
+            try:
+                last_id = int(self.data[-1][0])
+            except Exception:
+                last_id = len(self.data)
+        else:
+            last_id = 0
+
+        new_rows = []
+        for i, number in enumerate(phone_numbers, start=1):
+            new_id = str(last_id + i)
+            new_rows.append([new_id, str(number), "#"])  # last used = "#"
+
+        # تحديث البيانات
+        self.data.extend(new_rows)
+        start_index = len(self.data) - len(new_rows)
+
+        for i, row in enumerate(new_rows):
+            index = start_index + i
+            checkbox = "⬜"
+            values = [checkbox] + list(row)
+            tag = 'even' if index % 2 == 0 else 'odd'
+            iid = self.tree.insert("", "end", values=values, tags=(tag,))
+            self.checked_state[iid] = False
+
+        self.update_scrollbar_visibility()
 
     def update_scrollbar_visibility(self):
         total_rows = len(self.data)
@@ -85,7 +125,6 @@ class ModernCTkTable(ctk.CTkFrame):
             return
 
         visible_rows = tree_height_px // row_height
-
         if total_rows > visible_rows:
             self.vsb.pack(side="right", fill="y")
             self.tree.configure(yscrollcommand=self.vsb.set)
@@ -117,29 +156,3 @@ class ModernCTkTable(ctk.CTkFrame):
                 vals = self.tree.item(iid, "values")[1:]
                 selected.append(vals)
         return selected
-
-
-if __name__ == "__main__":
-    ctk.set_appearance_mode("dark")  # اختار "dark" أو "light"
-    ctk.set_default_color_theme("blue")  # "blue", "dark-blue", "green"
-
-    root = ctk.CTk()
-    root.geometry("700x450")
-    root.title("Modern Table with Checkboxes - customtkinter")
-
-    sample_data = [
-        ("1", "Ahmed", "Developer"),
-        ("2", "Mona", "Designer"),
-        ("3", "Khaled", "Manager"),
-        ("4", "Sara", "HR"),
-        ("5", "Ali", "Tester"),
-        ("6", "Layla", "Analyst"),
-        ("7", "Omar", "Support"),
-        ("8", "Nour", "Sales"),
-    ]
-    headers = ["ID", "Name", "Job"]
-
-    table = ModernCTkTable(root, sample_data, headers)
-    table.pack(fill="both", expand=True, padx=15, pady=15)
-
-    root.mainloop()

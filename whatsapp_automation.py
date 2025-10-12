@@ -1,209 +1,180 @@
-from helper_functions import *
-from botasaurus.browser import browser, Driver, Wait
-import threading
+import multiprocessing
 import random
 from time import sleep
+from colorama import Fore, init
+import psutil
+from helper_functions import *
+from botasaurus.browser import browser, Driver, Wait
 
+# ✅ تهيئة الألوان في الكونسول
+init(autoreset=True)
 
-
-
-
-
-"""
-    
-# self.count_sending
-# self.last_opened
-# self.
-
-
-
-# Class().run_automation([number1, number2, .....])
-
-
-    
-"""
-
-
-
-
-
-
-
-
-
-
-
-
-start_event = threading.Event()
-send_lock = threading.Lock()  # 🔒 قفل عام لمنع الإرسال المتزامن
+start_event = multiprocessing.Event()
+send_lock = multiprocessing.Lock()
 json_data = read_json()
-
-# ✅ حفظ بيانات كل فئة
-categories_data = {
-    "Nafs": {
-        "numbers": get_numbers("nafs"),
-        "messages": get_message("nafs"),
-        "index": 0,
-        "lock": threading.Lock()
-    },
-    "Tarbawy": {
-        "numbers": get_numbers("tarbawy"),
-        "messages": get_message("tarbawy"),
-        "index": 0,
-        "lock": threading.Lock()
-    },
-    "Taghzia": {
-        "numbers": get_numbers("taghzia"),
-        "messages": get_message("taghzia"),
-        "index": 0,
-        "lock": threading.Lock()
-    }
-}
-
-# ✅ الأرقام الخاصة بفئة التغذية فقط
-nutrition_senders = get_all_sender_taghzia_number()
 
 
 class NotFoundNumber(Exception):
     pass
 
 
-@browser(profile=get_profile)
-def open_whatsapp(driver: Driver, data):
-    
-    sender_phone = data["phone_number"]
+# =========================================================
+# ✅ دوال مساعدة
+# =========================================================
+def is_browser_open(driver: Driver):
+    """يتأكد إن المتصفح لسه شغال."""
+    try:
+        driver.get_page_source()
+        return True
+    except Exception:
+        return False
 
-    driver.enable_human_mode()
-    driver.google_get("https://web.whatsapp.com/", timeout=180)
-    sleep(random.uniform(5, 10))
-    driver.run_js(f'document.title = "📞 {sender_phone}";')
 
-    print(f"[{sender_phone}] Waiting to start")
-    start_event.wait()
-
-    # ✅ لو الرقم من أرقام التغذية → يشتغل على "Taghzia" فقط
-    is_nutrition_sender = sender_phone in nutrition_senders
-    if is_nutrition_sender:
-        categories_order = ["Taghzia"]
-    else:
-        categories_order = ["Nafs", "Tarbawy"]
-
-    # لتحديد التبديل بين الفئات
-    if not hasattr(threading.current_thread(), "last_category"):
-        threading.current_thread().last_category = categories_order[0]
-
-    while True:
-        selected_category = None
-        assigned_number = None
-        messages = []
-
-        # حدد الفئة التالية بالتناوب
-        if len(categories_order) > 1:
-            next_category = (
-                categories_order[0]
-                if threading.current_thread().last_category == categories_order[1]
-                else categories_order[1]
-            )
-        else:
-            next_category = categories_order[0]
-
-        # ✅ جرب الفئة المطلوبة أولاً، وإذا فاضية جرب الأخرى
-        for attempt in [next_category] + [c for c in categories_order if c != next_category]:
-            cat_data = categories_data[attempt]
-            with cat_data["lock"]:
-                if cat_data["index"] < len(cat_data["numbers"]):
-                    assigned_number = cat_data["numbers"][cat_data["index"]].strip()
-                    cat_data["index"] += 1
-                    selected_category = attempt
-                    messages = cat_data["messages"]
-                    threading.current_thread().last_category = selected_category
-                    break
-
-        if not selected_category:
-            print(f"[{sender_phone}] ✅ No more numbers to process. Exiting...")
-            break
-
-        print(f"[{selected_category}] {sender_phone} preparing to send to {assigned_number}")
-
+def is_profile_running(profile_name: str) -> bool:
+    """يتأكد إن بروفايل Chrome ده مفتوح بالفعل."""
+    for proc in psutil.process_iter(['name', 'cmdline']):
         try:
-            with send_lock:  # ✅ 🔒 القفل العام هنا
-                driver.get_element_containing_text("Search or start a new chat", wait=Wait.VERY_LONG).click()
-                write_message(driver, f"{assigned_number}", is_message=False)
-                sleep(random.uniform(1, 3))
-                
-                # handle expetion 
-                first_chat = driver.is_element_present(selector=json_data['first_chat'])    
-                
-                if first_chat :
-                    driver.wait_for_element(selector=json_data['first_chat']).click()
-                else :
-                    driver.wait_for_element(selector=json_data['clear_button'], wait=Wait.VERY_LONG).click()
-                    raise NotFoundNumber()
-                
-                
-                sleep(random.uniform(3, 5))
-                driver.wait_for_element(selector=json_data['type_message_ele']).click()
+            if proc.info['name'] and "chrome" in proc.info['name'].lower():
+                if profile_name in " ".join(proc.info.get('cmdline', [])):
+                    return True
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            continue
+    return False
 
-                msg_to_send = random.choice(messages)
-                write_message(driver, msg_to_send, is_message=True)
-                sleep(random.uniform(3, 5))
 
-                try:
-                    driver.wait_for_element(selector=json_data['send_button_1']).click()
-                except:
-                    driver.wait_for_element(selector=json_data['send_button_2']).click()
+# =========================================================
+# ✅ فتح واتساب فقط (بدون إرسال)
+# =========================================================
+@browser(profile=get_profile)
+def open_whatsapp_browser(driver: Driver, data, start_sending=True):
+    """يفتح واتساب ويب، ولو start_sending=True يبدأ الإرسال."""
+    sender_phone = data["phone_number"]
+    messages = data["messages"]
+    numbers = data["numbers"]
 
-                print(f"[{selected_category}] ✅ Message sent to {assigned_number} from [{sender_phone}]")
-                sleep(random.uniform(3, 5))
+    try:
+        driver.enable_human_mode()
+        driver.google_get("https://web.whatsapp.com/", timeout=180)
+        driver.wait_for_element("body", wait=Wait.VERY_LONG)
+        sleep(random.uniform(5, 10))
+        driver.run_js(f'document.title = "📞 {sender_phone}";')
+        print(Fore.CYAN + f"[{sender_phone}] ✅ WhatsApp loaded successfully.")
 
-        except NotFoundNumber:
-            print("Not Found nufffmber")
-        
-        except AttributeError:
-            # ✅ BAN detected → رجع الرقم مكانه وما يضيعش
-            print(f"[{selected_category}] 🚫 BAN detected for {sender_phone}. Closing driver...")
-            if assigned_number:
-                cat_data = categories_data[selected_category]
-                with cat_data["lock"]:
-                    cat_data["index"] -= 1
-                    if cat_data["index"] < 0:
-                        cat_data["index"] = 0
+        if not start_sending:
+            print(Fore.GREEN + f"[{sender_phone}] 🟢 Browser opened only (no sending).")
+            while is_browser_open(driver):
+                sleep(2)
+            return
+
+        # 🔹 لو start_sending=True — يبدأ المنطق بعد الإشارة
+        print(Fore.YELLOW + f"[{sender_phone}] Waiting for start signal...")
+        start_event.wait()
+        run_sender_logic(driver, sender_phone, numbers, messages)
+
+    finally:
+        if is_browser_open(driver):
             try:
                 driver.close()
             except:
                 pass
-            break  # ❌ يخرج من اللوب لهذا المرسل فقط
+        print(Fore.MAGENTA + f"[{sender_phone}] 🔚 Browser closed, process finished.")
+
+
+# =========================================================
+# ✅ منطق الإرسال فقط
+# =========================================================
+def run_sender_logic(driver: Driver, sender_phone, numbers, messages):
+    """منطق إرسال الرسائل بعد فتح واتساب."""
+    while True:
+        if not is_browser_open(driver):
+            print(Fore.RED + f"[{sender_phone}] ❌ Browser closed — stopping sender.")
+            break
+
+        assigned_number = numbers
+        msg_to_send = random.choice(messages)
+
+        try:
+            with send_lock:
+                search_box = driver.get_element_containing_text(
+                    "Search or start a new chat", wait=Wait.VERY_LONG
+                )
+                search_box.click()
+                write_message(driver, assigned_number, is_message=False)
+                sleep(random.uniform(1, 3))
+
+                first_chat = driver.is_element_present(selector=json_data["first_chat"])
+
+                if first_chat:
+                    driver.wait_for_element(selector=json_data["first_chat"]).click()
+                else:
+                    driver.wait_for_element(
+                        selector=json_data["clear_button"], wait=Wait.VERY_LONG
+                    ).click()
+                    raise NotFoundNumber()
+
+                driver.wait_for_element(selector=json_data["type_message_ele"]).click()
+                write_message(driver, msg_to_send, is_message=True)
+                sleep(random.uniform(2, 4))
+
+                try:
+                    driver.wait_for_element(selector=json_data["send_button_1"]).click()
+                except:
+                    driver.wait_for_element(selector=json_data["send_button_2"]).click()
+
+                print(Fore.GREEN + f"[{sender_phone}] ✅ Sent to {assigned_number}")
+
+        except NotFoundNumber:
+            print(Fore.YELLOW + f"[{sender_phone}] ⚠️ Number {assigned_number} not found")
 
         except Exception as e:
-            print(f"[{selected_category}] ❌ Error with {assigned_number}: {e}")
+            if "10061" in str(e):
+                print(Fore.RED + f"[{sender_phone}] 🔌 Lost Chrome connection — closing browser.")
+                break
+            else:
+                print(Fore.RED + f"[{sender_phone}] ❌ Unexpected error: {e}")
+                continue
+
+        sleep(random.uniform(3, 8))
+
+
+# =========================================================
+# ✅ مدير العمليات (فتح + إرسال)
+# =========================================================
+def run(channels_numbers, messages, sender_numbers, open_only=False):
+    """يفتح بروفايلات واتساب فقط أو يبدأ الإرسال."""
+    processes = []
+
+    for channel in channels_numbers:
+        if is_profile_running(channel):
+            print(Fore.YELLOW + f"⚠️ Profile '{channel}' is already running. Skipping...")
             continue
 
-
-def main():
-    threads = []
-
-    # * !!!!!!!!!!!!!
-    # !!!!!!!!!!!!!!!!!! بنحط هنا الارقام اللي هنشغلها
-    all_senders = get_all_sender_numbers()
-    # * !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-    for sender in all_senders:
         data = {
-            "phone_number": sender["phone_number"],
-            "profile": sender["profile"]
+            "phone_number": channel,
+            "profile": channel,
+            "messages": messages,
+            "numbers": sender_numbers,
         }
-        t = threading.Thread(target=open_whatsapp, args=(data,))
-        t.start()
-        threads.append(t)
 
-    input("Start all browsers? (اضغط Enter للبدء)\n")
-    start_event.set()
+        p = multiprocessing.Process(
+            target=open_whatsapp_browser,
+            args=(data, not open_only),  # لو open_only=True ⇒ start_sending=False
+        )
+        p.start()
+        processes.append(p)
 
-    for t in threads:
-        t.join()
+    if not processes:
+        print(Fore.RED + "\n❌ No browsers launched. All profiles already running.")
+        return
 
+    if open_only:
+        print(Fore.CYAN + "\n🟢 All browsers opened (no sending).")
+    else:
+        print(Fore.CYAN + "\n✅ All browsers launched.")
+        input(Fore.YELLOW + "👉 Press Enter to start sending...\n")
+        start_event.set()
 
-if __name__ == "__main__":
-    main()
+    for p in processes:
+        p.join()
 
-
+    print(Fore.GREEN + "\n🎯 All processes finished.")
