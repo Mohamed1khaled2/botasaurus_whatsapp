@@ -1,11 +1,13 @@
 import customtkinter as ctk
 from tkinter import ttk
-
+import conn_database
 class ModernCTkTable(ctk.CTkFrame):
     def __init__(self, parent, headers, *args, **kwargs):
         super().__init__(parent, *args, **kwargs)
-        self.original_data = []
-        self.data = []
+        
+        self.connection_database = conn_database.ChanDataBase()
+        
+        self.data = self.connection_database.get_all_numbers()
         self.headers = [""] + headers
         self.checked_state = {}
 
@@ -79,30 +81,28 @@ class ModernCTkTable(ctk.CTkFrame):
         self.update_scrollbar_visibility()
 
     def add_data(self, phone_numbers):
-        """
-        تضيف رقم أو أكتر للجدول الحالي.
-        - phone_numbers ممكن يكون رقم واحد أو list من الأرقام.
-        - الـ ID بيتولّد تلقائي.
-        - Last Used بيتساب فاضي أو بـ "#" مؤقتًا.
-        """
+        
         if isinstance(phone_numbers, (str, int)):
             phone_numbers = [phone_numbers]
 
-        # تحديد آخر ID موجود
-        if self.data:
-            try:
-                last_id = int(self.data[-1][0])
-            except Exception:
-                last_id = len(self.data)
-        else:
-            last_id = 0
+        # جمع الأرقام الحالية في الجدول (العمود الثاني)
+        existing_numbers = {str(self.tree.item(iid, "values")[2]).strip() for iid in self.tree.get_children()}
 
+
+        print(existing_numbers)
+        
         new_rows = []
-        for i, number in enumerate(phone_numbers, start=1):
-            new_id = str(last_id + i)
-            new_rows.append([new_id, str(number), "#"])  # last used = "#"
+        for number in phone_numbers:
+            if str(number).strip() in existing_numbers:
+                print(f"⚠️ الرقم {number} موجود بالفعل في الجدول ولن يُضاف.")
+                continue  # تجاهل الرقم المكرر
 
-        # تحديث البيانات
+            # إضافة الرقم في قاعدة البيانات
+            new_row = self.connection_database.add_number(number, "#")
+            new_rows.append(new_row)
+            existing_numbers.add(str(number).strip())
+
+        # تحديث البيانات المعروضة في الجدول
         self.data.extend(new_rows)
         start_index = len(self.data) - len(new_rows)
 
@@ -113,10 +113,9 @@ class ModernCTkTable(ctk.CTkFrame):
             tag = 'even' if index % 2 == 0 else 'odd'
             iid = self.tree.insert("", "end", values=values, tags=(tag,))
             self.checked_state[iid] = False
-        self.original_data = self.data[:]  # حفظ نسخة أصلية
 
         self.update_scrollbar_visibility()
-
+        
     def update_scrollbar_visibility(self):
         total_rows = len(self.data)
         row_height = 30
@@ -157,3 +156,68 @@ class ModernCTkTable(ctk.CTkFrame):
                 vals = self.tree.item(iid, "values")[1:]
                 selected.append(vals)
         return selected
+    
+    def del_selected_rows(self):
+        """حذف كل الصفوف اللي عليها ✅ من الجدول وقاعدة البيانات"""
+        checked_rows = []
+        for iid, checked in list(self.checked_state.items()):
+            if checked:
+                vals = self.tree.item(iid, "values")
+                if len(vals) >= 3:
+                    _id = vals[1]
+                    number = vals[2]
+                    checked_rows.append((iid, number))
+
+        if not checked_rows:
+            print("⚠️ لا يوجد صفوف محددة للحذف.")
+            return
+
+        confirm = ctk.CTkInputDialog(
+            text=f"سيتم حذف {len(checked_rows)} صف. اكتب 'yes' للتأكيد:",
+            title="تأكيد الحذف"
+        ).get_input()
+
+        if not confirm or confirm.lower().strip() != "yes":
+            print("🚫 تم إلغاء عملية الحذف.")
+            return
+
+        # حذف من قاعدة البيانات
+        for _, number in checked_rows:
+            self.connection_database.delete_number(number)
+
+        # حذف من الواجهة
+        for iid, _ in checked_rows:
+            self.tree.delete(iid)
+            self.checked_state.pop(iid, None)
+
+        # تحديث self.data (إزالة المحذوفين)
+        remaining = []
+        for row in self.data:
+            if str(row[1]) not in [num for _, num in checked_rows]:
+                remaining.append(row)
+        self.data = remaining
+
+        self.update_scrollbar_visibility()
+        print(f"🗑️ تم حذف {len(checked_rows)} صف بنجاح.")
+            
+    def clear_all_data(self):
+        """مسح جميع البيانات من قاعدة البيانات والجدول"""
+        confirm = ctk.CTkInputDialog(
+            text="⚠️ هل أنت متأكد من حذف كل البيانات؟ اكتب 'yes' للتأكيد:",
+            title="تأكيد الحذف"
+        ).get_input()
+
+        if confirm and confirm.lower().strip() == "yes":
+            # حذف من قاعدة البيانات
+            self.connection_database.clear_all_numbers()
+            
+            
+            # حذف من الواجهة
+            self.tree.delete(*self.tree.get_children())
+            self.checked_state.clear()
+            self.data.clear()
+            self.update_scrollbar_visibility()
+
+            print("🧹 تم مسح كل البيانات بنجاح.")
+        else:
+            print("🚫 تم إلغاء عملية الحذف.")

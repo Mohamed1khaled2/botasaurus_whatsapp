@@ -3,7 +3,7 @@ from gui.view_tree_data import ModernCTkTable
 import threading
 import whatsapp_automation  # ملفك المعدل اللي فيه run(open_only=True)
 from whatsapp_automation import start_event
-
+from conn_database import ChanDataBase
 
 class ChannelsTab(ctk.CTkFrame):
     
@@ -25,7 +25,8 @@ class ChannelsTab(ctk.CTkFrame):
 
         # 🔍 مربع البحث في النص فوق
         self.search_entry = ctk.CTkEntry(self, placeholder_text="Type to search...", width=220)
-        self.search_entry.grid(row=0, column=1, columnspan=2, pady=10, sticky="n")
+        
+        self.search_entry.grid(row=0, column=1, columnspan=2,  pady=10, sticky="n")
         self.search_entry.bind("<KeyRelease>", self.live_search)
 
         # 📋 الجدول
@@ -33,16 +34,24 @@ class ChannelsTab(ctk.CTkFrame):
         self.table.grid(row=1, column=0, columnspan=4, sticky="nsew", padx=10, pady=5)
 
         # 🔘 الأزرار تحت
+
         open_btn = ctk.CTkButton(self, text="Open Only", command=self.open_only)
-    
-        add_number_btn = ctk.CTkButton(self, text="Add Number", command=self.input_dilog)
-
         open_btn.grid(row=2, column=0, sticky="nsew", padx=5, pady=5)
+        add_number_btn = ctk.CTkButton(self, text="Add Number", command=self.input_dilog)
+        add_number_btn.grid(row=2, column=1, sticky="nsew", padx=5, pady=5)
 
-        add_number_btn.grid(row=2, column=3, sticky="nsew", padx=5, pady=5)
+        clear_numbers_btn = ctk.CTkButton(self, text='Clear Numbers', fg_color='red', command=self.clear_number)
+        clear_numbers_btn.grid(row=2, column=2, sticky="nsew", padx=5, pady=5)
+
+        deleted_selected_rows_btn = ctk.CTkButton(self, text='Delete Selected Numbers', fg_color='red', command=self.del_selected_number)
+        deleted_selected_rows_btn.grid(row=2, column=3, sticky="nsew", padx=5, pady=5)
         
-        
-        
+    def clear_number(self):
+        self.table.clear_all_data()
+
+    def del_selected_number(self):
+        self.table.del_selected_rows()
+
     def input_dilog(self):
         dialog = ctk.CTkInputDialog(text="Type in a number:", title="Test")
         self.table.add_data(dialog.get_input())
@@ -56,17 +65,16 @@ class ChannelsTab(ctk.CTkFrame):
         self.search_after_id = self.after(300, self.do_search)
 
     def do_search(self):
-        keyword = self.search_entry.get().strip().lower()
 
-        # نفلتر بناءً على النسخة الأصلية مش المعدلة
+        keyword = self.search_entry.get().strip()
+
+        # لو البحث فاضي → رجع كل الأرقام
         if not keyword:
-            filtered = self.table.original_data[:]
+            filtered = self.table.connection_database.get_all_numbers()
         else:
-            filtered = [
-                row for row in self.table.original_data
-                if keyword in str(row[1]).lower()  # عمود "Number" فقط
-            ]
+            filtered = self.table.connection_database.search_numbers(keyword)
 
+        # حدث الجدول بالنتائج
         self.table.update_data(filtered)
 
 
@@ -101,7 +109,8 @@ class ChannelsTab(ctk.CTkFrame):
             target=whatsapp_automation.run,
             args=(selected, ['hello', 'hi'], ['01002097448', '01093998000'], False),  # False = start_sending
             daemon=True,
-        ).start()
+        ).start()   
+        
 
 
 # ======================================================
