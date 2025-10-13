@@ -2,11 +2,10 @@ import customtkinter as ctk
 from tkinter import ttk
 
 class ModernCTkTable(ctk.CTkFrame):
-    def __init__(self, parent, data, headers, *args, **kwargs):
+    def __init__(self, parent, headers, *args, **kwargs):
         super().__init__(parent, *args, **kwargs)
-
-        self.original_data = data[:]  
-        self.data = data
+        self.original_data = []
+        self.data = []
         self.headers = [""] + headers
         self.checked_state = {}
 
@@ -40,6 +39,7 @@ class ModernCTkTable(ctk.CTkFrame):
         style.map("Treeview.Heading",
                   background=[("active", "#1f1f1f")],
                   relief=[("active", "flat")])
+     
         style.map("Treeview",
                   background=[("selected", "#4a90e2")],
                   foreground=[("selected", "#ffffff")])
@@ -113,6 +113,7 @@ class ModernCTkTable(ctk.CTkFrame):
             tag = 'even' if index % 2 == 0 else 'odd'
             iid = self.tree.insert("", "end", values=values, tags=(tag,))
             self.checked_state[iid] = False
+        self.original_data = self.data[:]  # حفظ نسخة أصلية
 
         self.update_scrollbar_visibility()
 

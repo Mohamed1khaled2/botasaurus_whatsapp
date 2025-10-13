@@ -6,13 +6,15 @@ from whatsapp_automation import start_event
 
 
 class ChannelsTab(ctk.CTkFrame):
+    
     def __init__(self, master, **kwargs):
         super().__init__(master, **kwargs)
 
         # ✅ بيانات افتراضية
         headers = ["ID", "Number", "Last Time Used"]
-        data = []
-        self.original_data = data[:]
+
+        
+
         self.search_after_id = None
 
         # توزيع الأعمدة والصفوف
@@ -27,7 +29,7 @@ class ChannelsTab(ctk.CTkFrame):
         self.search_entry.bind("<KeyRelease>", self.live_search)
 
         # 📋 الجدول
-        self.table = ModernCTkTable(self, data=data, headers=headers)
+        self.table = ModernCTkTable(self, headers=headers)
         self.table.grid(row=1, column=0, columnspan=4, sticky="nsew", padx=10, pady=5)
 
         # 🔘 الأزرار تحت
@@ -55,12 +57,18 @@ class ChannelsTab(ctk.CTkFrame):
 
     def do_search(self):
         keyword = self.search_entry.get().strip().lower()
-        filtered = (
-            self.original_data
-            if not keyword
-            else [row for row in self.original_data if keyword in " ".join(map(str, row)).lower()]
-        )
+
+        # نفلتر بناءً على النسخة الأصلية مش المعدلة
+        if not keyword:
+            filtered = self.table.original_data[:]
+        else:
+            filtered = [
+                row for row in self.table.original_data
+                if keyword in str(row[1]).lower()  # عمود "Number" فقط
+            ]
+
         self.table.update_data(filtered)
+
 
     # ======================================================
     # 📱 دوال التحكم في واتساب
