@@ -239,7 +239,7 @@ class ModernCTkTable(ctk.CTkFrame):
 
         self.update_scrollbar_visibility()
         
-        ManageFiles().del_profile(checked_rows[0][1])
+        ManageFiles().del_profile([checked_rows[0][1]])
         print(f"🗑️ تم حذف {len(checked_rows)} صف بنجاح.")
             
     def clear_all_data(self):
@@ -259,6 +259,11 @@ class ModernCTkTable(ctk.CTkFrame):
             self.checked_state.clear()
             self.data.clear()
             self.update_scrollbar_visibility()
+            
+            
+            # ManageFiles().del_profile([checked_rows[0][1]])
+
+            print(self.tree.get_children())
 
             print("🧹 تم مسح كل البيانات بنجاح.")
         else:

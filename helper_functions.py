@@ -4,7 +4,7 @@ import json
 import time
 import pyautogui
 import random   
-import mange_run 
+
 
 def get_numbers(folder_path) -> list[str]:
     all_numbers = []
@@ -28,10 +28,10 @@ def get_message(folder_path) -> list[str]:
     text_messages = []
 
     
-    foler = os.listdir(folder_path)
+    folder = os.listdir(folder_path)
     
     
-    for txt_file in foler:
+    for txt_file in folder:
         if txt_file.find("message") != -1:
             messages.append(txt_file)
      
@@ -65,6 +65,7 @@ def write_message(driver: Driver, message: str, is_message:bool):
 def get_profile(data):
     return data["profile"]
 
+
 def read_json():
     with open("locations.json", 'r') as file:    
         json_data = json.load(file)
@@ -84,42 +85,3 @@ def moving_for_duration(duration_seconds):
         
     print("Time finished")
     
-
-
-
-
-
-def get_all_sender_numbers():
-    data = []
-    for number in mange_run.all_sener_numbers:
-        if number == '':
-            continue
-        data.append({
-            "phone_number": number, 
-            "profile":number})
-    return data
-
-
-def get_all_sender_taghzia_number():
-    return mange_run.taghzia_number
-
-# def main():
-    
-#     print(len(get_message()))
-#     # try:
-#     #     print(len(message))
-#     #     message = get_message()
-#     #     number = get_numbers()
-#     #     if len(message) == 0 or len(number) == 0:
-#     #         raise Exception("ERROR: message or number is not found \n hint: Must the file of message name is message and number file name is number")
-#     # # COMMit that becuse nake the random messages to sent
-#     # #     if len(number) != len(message):
-#     # #         raise Exception("ERROR: count of files numbers and messages not equal \n hint: Must the file of message name is message and number file name is number")
-    
-#     # except TypeError:
-#     #     sys.exit("You need to create file numbers.txt and file message.txt")
-#     # except Exception as e:
-#     #     sys.exit(e)
-    
-
-# main()

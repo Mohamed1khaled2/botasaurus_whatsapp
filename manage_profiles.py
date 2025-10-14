@@ -2,6 +2,7 @@ from botasaurus.profiles import Profiles
 import json
 import os 
 import sys
+import shutil
 
 class ManageFiles:
     def __init__(self):
@@ -12,12 +13,12 @@ class ManageFiles:
         else:
             base_path = os.path.dirname(os.path.abspath(__file__))
 
-        profile_path = os.path.join(base_path, "profiles")
+        self.profile_path = os.path.join(base_path, "profiles")
 
         # تأكد إن المجلد موجود
-        os.makedirs(os.path.dirname(profile_path), exist_ok=True)
+        os.makedirs(os.path.dirname(self.profile_path), exist_ok=True)
 
-        print(profile_path)
+        print(self.profile_path)
 
     def search_about_profiles(self, number:str) -> Profiles:
         profile = Profiles.get_profile(number)
@@ -45,6 +46,12 @@ class ManageFiles:
         else:
             return ("Profile Created")
         
-    def del_profile(self, number:str):
-        os.rmdir()
-        Profiles.delete_profile(number)
+    def del_profile(self, numbers:list[str]):
+        try:
+            for number in numbers :
+                path_number_file = os.path.join(self.profile_path, str(number))
+                if os.path.exists(path_number_file):
+                    shutil.rmtree(path_number_file)
+                Profiles.delete_profile(number)
+        except:
+            pass
