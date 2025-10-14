@@ -1,6 +1,10 @@
 import customtkinter as ctk
 from tkinter import ttk
 import conn_database
+from manage_profiles import ManageFiles
+
+
+
 class ModernCTkTable(ctk.CTkFrame):
     def __init__(self, parent, headers, *args, **kwargs):
         super().__init__(parent, *args, **kwargs)
@@ -75,10 +79,46 @@ class ModernCTkTable(ctk.CTkFrame):
             self.checked_state[iid] = False
 
     def update_data(self, new_data):
-        """استبدال البيانات القديمة بالجديدة"""
+        """استبدال البيانات القديمة بالجديدة مع الحفاظ على حالة التحديد ✅"""
+
+        # حفظ الأرقام اللي كانت محددة ✅ قبل التحديث
+        selected_numbers = set()
+        for iid, checked in self.checked_state.items():
+            if checked:
+                vals = self.tree.item(iid, "values")
+                if len(vals) >= 3:
+                    selected_numbers.add(str(vals[2]).strip())
+
+        # تحديث البيانات
         self.data = new_data
-        self.insert_data()
+
+        # حفظ موضع الـ scrollbar
+        yview = self.tree.yview()
+
+        # مسح الجدول الحالي
+        self.tree.delete(*self.tree.get_children())
+        self.checked_state.clear()
+
+        # إعادة إدخال البيانات الجديدة
+        for index, row in enumerate(self.data):
+            number = str(row[1]).strip() if len(row) > 1 else ""
+            is_checked = number in selected_numbers  # لو الرقم كان محدد ✅
+            checkbox = "✅" if is_checked else "⬜"
+
+            values = [checkbox] + list(row)
+            tag = 'even' if index % 2 == 0 else 'odd'
+            iid = self.tree.insert("", "end", values=values, tags=(tag,))
+            self.checked_state[iid] = is_checked
+
+        # إعادة موضع الـ scrollbar
+        self.tree.yview_moveto(yview[0])
+
+        # إعادة تفعيل حدث الكليك بعد التحديث
+        self.tree.bind("<Button-1>", self.on_click)
+
+        # تحديث حالة الـ scrollbar
         self.update_scrollbar_visibility()
+
 
     def add_data(self, phone_numbers):
         
@@ -198,6 +238,8 @@ class ModernCTkTable(ctk.CTkFrame):
         self.data = remaining
 
         self.update_scrollbar_visibility()
+        
+        ManageFiles().del_profile(checked_rows[0][1])
         print(f"🗑️ تم حذف {len(checked_rows)} صف بنجاح.")
             
     def clear_all_data(self):
