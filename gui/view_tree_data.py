@@ -1,31 +1,47 @@
 import customtkinter as ctk
 from tkinter import ttk
-import conn_database
-from manage_profiles import ManageFiles
+from typing import Any, List, Tuple, Optional
 
 
 class ModernCTkTable(ctk.CTkFrame):
-    def __init__(self, parent, headers, *args, **kwargs):
+    """
+    جدول عرض بيانات متطور باستخدام CustomTkinter.
+    - يعرض البيانات فقط (Viewer).
+    - لا يتعامل مباشرة مع قاعدة البيانات.
+    - يمكن تفعيله بعمود ✅ باستخدام checked_column=True.
+    """
+
+    def __init__(
+        self,
+        parent: Any,
+        headers: List[str],
+        data: Optional[List[Tuple[Any, ...]]] = None,
+        checked_column: bool = False,
+        *args,
+        **kwargs
+    ):
         super().__init__(parent, *args, **kwargs)
 
-        self.connection_database = conn_database.ChanDataBase()
+        # الإعدادات العامة
+        self.checked_column: bool = checked_column
+        self.headers: List[str] = [""] + headers if checked_column else headers
+        self.data: List[Tuple[Any, ...]] = data or []
+        self.checked_state: dict[str, bool] = {}
 
-        self.data = self.connection_database.get_all_numbers()
-        self.headers = [""] + headers
-        self.checked_state = {}
-
+        # إنشاء إطار الجدول
         self.table_frame = ctk.CTkFrame(self)
         self.table_frame.pack(fill="both", expand=True, padx=10, pady=(0, 10))
 
         self.setup_widgets()
-        self.insert_data()
+        self.insert_data(self.data)
         self.update_scrollbar_visibility()
 
-        self.tree.bind(
-            "<Configure>", lambda e: self.update_scrollbar_visibility())
+        self.tree.bind("<Configure>", lambda e: self.update_scrollbar_visibility())
         self.bind("<Configure>", lambda e: self.update_scrollbar_visibility())
 
-    def setup_widgets(self):
+    # ---------------------------------------------------------------------
+    def setup_widgets(self) -> None:
+        """تجهيز شكل الجدول"""
         style = ttk.Style()
         style.theme_use('clam')
 
@@ -51,113 +67,134 @@ class ModernCTkTable(ctk.CTkFrame):
                   foreground=[("selected", "#ffffff")])
 
         self.tree = ttk.Treeview(
-            self.table_frame, columns=self.headers, show="headings", selectmode="browse")
+            self.table_frame,
+            columns=self.headers,
+            show="headings",
+            selectmode="browse"
+        )
         self.tree.pack(fill="both", expand=True, side="left")
 
         for i, header in enumerate(self.headers):
-            width = 40 if i == 0 else 150
+            width = 40 if (self.checked_column and i == 0) else 150
             self.tree.heading(header, text=header, anchor="center")
             self.tree.column(header, width=width, anchor="center")
 
+        # Scrollbar
         self.vsb = ctk.CTkScrollbar(
             self.table_frame, orientation="vertical", command=self.tree.yview)
         self.vsb.pack_forget()
         self.tree.configure(yscrollcommand=self.vsb.set)
 
+        # ألوان الصفوف
         self.tree.tag_configure('odd', background="#303030")
         self.tree.tag_configure('even', background="#232323")
 
-        self.tree.bind("<Button-1>", self.on_click)
+        if self.checked_column:
+            self.tree.bind("<Button-1>", self.on_click)
 
-    def insert_data(self):
+    # ---------------------------------------------------------------------
+    def insert_data(self, data: List[Tuple[Any, ...]]) -> None:
+        """عرض البيانات الجديدة بالكامل"""
         self.tree.delete(*self.tree.get_children())
         self.checked_state.clear()
+        self.data = data
 
-        for index, row in enumerate(self.data):
-            checkbox = "⬜"
-            values = [checkbox] + list(row)
+        for index, row in enumerate(data):
             tag = 'even' if index % 2 == 0 else 'odd'
-            iid = self.tree.insert("", "end", values=values, tags=(tag,))
-            self.checked_state[iid] = False
+            if self.checked_column:
+                values = ["⬜"] + list(row)
+                iid = self.tree.insert("", "end", values=values, tags=(tag,))
+                self.checked_state[iid] = False
+            else:
+                self.tree.insert("", "end", values=list(row), tags=(tag,))
 
-    def update_data(self, new_data):
-        """استبدال البيانات القديمة بالجديدة مع الحفاظ على حالة التحديد ✅"""
+    # ---------------------------------------------------------------------
+    def update_data(self, new_data: List[Tuple[Any, ...]]) -> None:
+        """تحديث الجدول ببيانات جديدة مع الحفاظ على ✅ المحددة"""
+        selected = set()
+        if self.checked_column:
+            for iid, checked in self.checked_state.items():
+                if checked:
+                    vals = self.tree.item(iid, "values")
+                    if len(vals) >= 2:
+                        selected.add(str(vals[1]).strip())
 
-        # حفظ الأرقام اللي كانت محددة ✅ قبل التحديث
-        selected_numbers = set()
-        for iid, checked in self.checked_state.items():
-            if checked:
-                vals = self.tree.item(iid, "values")
-                if len(vals) >= 3:
-                    selected_numbers.add(str(vals[2]).strip())
-
-        # تحديث البيانات
         self.data = new_data
-
-        # حفظ موضع الـ scrollbar
         yview = self.tree.yview()
-
-        # مسح الجدول الحالي
         self.tree.delete(*self.tree.get_children())
         self.checked_state.clear()
 
-        # إعادة إدخال البيانات الجديدة
-        for index, row in enumerate(self.data):
-            number = str(row[1]).strip() if len(row) > 1 else ""
-            is_checked = number in selected_numbers  # لو الرقم كان محدد ✅
-            checkbox = "✅" if is_checked else "⬜"
-
-            values = [checkbox] + list(row)
+        for index, row in enumerate(new_data):
             tag = 'even' if index % 2 == 0 else 'odd'
+            number = str(row[0]).strip() if row else ""
+            is_checked = number in selected
+            checkbox = "✅" if is_checked else "⬜"
+            values = [checkbox] + list(row) if self.checked_column else list(row)
             iid = self.tree.insert("", "end", values=values, tags=(tag,))
             self.checked_state[iid] = is_checked
 
-        # إعادة موضع الـ scrollbar
         self.tree.yview_moveto(yview[0])
-
-        # إعادة تفعيل حدث الكليك بعد التحديث
-        self.tree.bind("<Button-1>", self.on_click)
-
-        # تحديث حالة الـ scrollbar
+        if self.checked_column:
+            self.tree.bind("<Button-1>", self.on_click)
         self.update_scrollbar_visibility()
 
-    def add_data(self, phone_numbers):
-
-        if isinstance(phone_numbers, (str, int)):
-            phone_numbers = [phone_numbers]
-
-        # جمع الأرقام الحالية في الجدول (العمود الثاني)
-        existing_numbers = {str(self.tree.item(iid, "values")[
-                                2]).strip() for iid in self.tree.get_children()}
-
-        print(existing_numbers)
-
-        new_rows = []
-        for number in phone_numbers:
-            if str(number).strip() in existing_numbers:
-                print(f"⚠️ الرقم {number} موجود بالفعل في الجدول ولن يُضاف.")
-                continue  # تجاهل الرقم المكرر
-
-            # إضافة الرقم في قاعدة البيانات
-            new_row = self.connection_database.add_number(number, "#")
-            new_rows.append(new_row)
-            existing_numbers.add(str(number).strip())
-
-        # تحديث البيانات المعروضة في الجدول
+    # ---------------------------------------------------------------------
+    def add_data(self, new_rows: List[Tuple[Any, ...]]) -> None:
+        """إضافة صفوف جديدة للعرض فقط (بدون تعديل قاعدة البيانات)"""
+        start_index = len(self.data)
         self.data.extend(new_rows)
-        start_index = len(self.data) - len(new_rows)
-
-        for i, row in enumerate(new_rows):
-            index = start_index + i
-            checkbox = "⬜"
-            values = [checkbox] + list(row)
-            tag = 'even' if index % 2 == 0 else 'odd'
+        for i, row in enumerate(new_rows, start=start_index):
+            tag = 'even' if i % 2 == 0 else 'odd'
+            values = ["⬜"] + list(row) if self.checked_column else list(row)
             iid = self.tree.insert("", "end", values=values, tags=(tag,))
-            self.checked_state[iid] = False
-
+            if self.checked_column:
+                self.checked_state[iid] = False
         self.update_scrollbar_visibility()
 
-    def update_scrollbar_visibility(self):
+    # ---------------------------------------------------------------------
+    def on_click(self, event) -> None:
+        """تبديل ✅"""
+        if not self.checked_column:
+            return
+
+        region = self.tree.identify("region", event.x, event.y)
+        if region != "cell":
+            return
+
+        col = self.tree.identify_column(event.x)
+        row = self.tree.identify_row(event.y)
+
+        if col == "#1" and row:
+            current_vals = list(self.tree.item(row, "values"))
+            is_checked = self.checked_state.get(row, False)
+            current_vals[0] = "✅" if not is_checked else "⬜"
+            self.tree.item(row, values=current_vals)
+            self.checked_state[row] = not is_checked
+
+    # ---------------------------------------------------------------------
+    def get_selected_rows(self) -> List[Tuple[Any, ...]]:
+        """إرجاع الصفوف المحددة ✅"""
+        if not self.checked_column:
+            return [self.tree.item(iid, "values") for iid in self.tree.get_children()]
+
+        selected = []
+        for iid, checked in self.checked_state.items():
+            if checked:
+                vals = self.tree.item(iid, "values")[1:]
+                selected.append(vals)
+        return selected
+
+    # ---------------------------------------------------------------------
+    def clear(self) -> None:
+        """مسح جميع الصفوف من العرض فقط"""
+        self.tree.delete(*self.tree.get_children())
+        self.checked_state.clear()
+        self.data.clear()
+        self.update_scrollbar_visibility()
+
+    # ---------------------------------------------------------------------
+    def update_scrollbar_visibility(self) -> None:
+        """إظهار أو إخفاء Scrollbar تلقائيًا"""
         total_rows = len(self.data)
         row_height = 30
         tree_height_px = self.tree.winfo_height()
@@ -172,97 +209,98 @@ class ModernCTkTable(ctk.CTkFrame):
         else:
             self.vsb.pack_forget()
             self.tree.configure(yscrollcommand=None)
+      
+    #---------------------------------------------------------------------  
+    def delete_rows(self, rows_to_delete: Optional[List[Tuple[Any, ...]]] = None) -> None:
+        """
+        حذف صفوف محددة من الجدول.
+        
+        Args:
+            rows_to_delete (Optional[List[Tuple[Any, ...]]]): 
+                قائمة الصفوف التي سيتم حذفها.
+                إذا لم يتم تمريرها، سيتم حذف الصفوف المحددة ✅ فقط.
+        """
+        # لو الجدول فيه checkbox واختار ✅
+        if self.checked_column and rows_to_delete is None:
+            rows_to_delete = self.get_selected_rows()
 
-    def on_click(self, event):
-        region = self.tree.identify("region", event.x, event.y)
-        if region != "cell":
+        if not rows_to_delete:
+            print("⚠️ لا توجد صفوف لحذفها.")
             return
 
-        col = self.tree.identify_column(event.x)
-        row = self.tree.identify_row(event.y)
+        # نحول الصفوف إلى مجموعة لسهولة المقارنة
+        rows_to_delete_set = {tuple(map(str, r)) for r in rows_to_delete}
 
-        if col == "#1" and row:
-            current_vals = list(self.tree.item(row, "values"))
-            is_checked = self.checked_state.get(row, False)
+        remaining_data = []
+        for iid in self.tree.get_children():
+            row_values = list(self.tree.item(iid, "values"))
+            if self.checked_column:
+                row_values = row_values[1:]  # استبعد عمود ✅
 
-            new_checkbox = "✅" if not is_checked else "⬜"
-            current_vals[0] = new_checkbox
-            self.tree.item(row, values=current_vals)
-            self.checked_state[row] = not is_checked
-
-    def get_selected_rows(self):
-        selected = []
-        for iid, checked in self.checked_state.items():
-            if checked:
-                vals = self.tree.item(iid, "values")[1:]
-                selected.append(vals)
-        return selected
-
-    def del_selected_rows(self):
-        """حذف كل الصفوف اللي عليها ✅ من الجدول وقاعدة البيانات"""
-        checked_rows = []
-        for iid, checked in list(self.checked_state.items()):
-            if checked:
-                vals = self.tree.item(iid, "values")
-                if len(vals) >= 3:
-                    _id = vals[1]
-                    number = vals[2]
-                    checked_rows.append((iid, number))
-
-        if not checked_rows:
-            print("⚠️ لا يوجد صفوف محددة للحذف.")
-            return
-
-        confirm = ctk.CTkInputDialog(
-            text=f"سيتم حذف {len(checked_rows)} صف. اكتب 'yes' للتأكيد:",
-            title="تأكيد الحذف"
-        ).get_input()
-
-        if not confirm or confirm.lower().strip() != "yes":
-            print("🚫 تم إلغاء عملية الحذف.")
-            return
-
-        # حذف من قاعدة البيانات
-        for _, number in checked_rows:
-            self.connection_database.delete_number(number)
-
-        # حذف من الواجهة
-        for iid, _ in checked_rows:
-            self.tree.delete(iid)
-            self.checked_state.pop(iid, None)
-
-        # تحديث self.data (إزالة المحذوفين)
-        remaining = []
-        for row in self.data:
-            if str(row[1]) not in [num for _, num in checked_rows]:
-                remaining.append(row)
-        self.data = remaining
-
+            if tuple(map(str, row_values)) not in rows_to_delete_set:
+                remaining_data.append(row_values)
+            else:
+                self.tree.delete(iid)
+                if iid in self.checked_state:
+                    del self.checked_state[iid]
+        # تحديث البيانات المعروضة
+        self.data = remaining_data
         self.update_scrollbar_visibility()
+        
+    #---------------------------------------------------------------------  
+    def update_cell_value(self, row_index: int, col_index: int, new_value: str) -> None:
+        """
+        تحديث قيمة خلية معينة داخل الجدول بناءً على رقم الصف والعمود.
 
-        ManageFiles().del_profile([checked_rows[0][1]])
-        print(f"🗑️ تم حذف {len(checked_rows)} صف بنجاح.")
+        Args:
+            row_index (int): رقم الصف (يبدأ من 0)
+            col_index (int): رقم العمود (يبدأ من 0، ولو فيه عمود ✅ بيتحسب كمان)
+            new_value (str): القيمة الجديدة اللي هتتحط
+        """
+        # الحصول على كل صفوف الجدول
+        items = self.tree.get_children()
+        if row_index < 0 or row_index >= len(items):
+            print("⚠️ رقم الصف غير صالح.")
+            return
 
-    def clear_all_data(self):
-        """مسح جميع البيانات من قاعدة البيانات والجدول"""
-        confirm = ctk.CTkInputDialog(
-            text="⚠️ هل أنت متأكد من حذف كل البيانات؟ اكتب 'yes' للتأكيد:",
-            title="تأكيد الحذف"
-        ).get_input()
+        iid = items[row_index]
+        values = list(self.tree.item(iid, "values"))
 
-        if confirm and confirm.lower().strip() == "yes":
-            # حذف من قاعدة البيانات
-            self.connection_database.clear_all_numbers()
+        if col_index < 0 or col_index >= len(values):
+            print("⚠️ رقم العمود غير صالح.")
+            return
 
-            # حذف من الواجهة
-            self.tree.delete(*self.tree.get_children())
-            self.checked_state.clear()
-            self.data.clear()
-            self.update_scrollbar_visibility()
+        # تعديل القيمة المطلوبة
+        values[col_index] = new_value
+        self.tree.item(iid, values=values)
 
-            ManageFiles().del_profile(
-                [number for number in self.tree.get_children()])
+        # تحديث النسخة المحلية self.data لو حابب تحافظ على التزامن
+        if row_index < len(self.data):
+            row_data = list(self.data[row_index])
+            try:
+                # لو فيه عمود ✅ يبقى أول عمود مش من الداتا الأصلية
+                real_col_index = col_index - 1 if self.checked_column else col_index
+                if 0 <= real_col_index < len(row_data):
+                    row_data[real_col_index] = new_value
+                    self.data[row_index] = tuple(row_data)
+            except Exception as e:
+                print(f"⚠️ خطأ أثناء تحديث self.data: {e}")
+    
+    #---------------------------------------------------------------------         
+    def get_row_index_by_value(self, value: str) -> int:
+        """
+        تبحث في كل صفوف الجدول عن القيمة المحددة وتعيد رقم الصف (index) لو لقتها.
+        لو مش لاقياها، ترجع -1.
 
-            print("🧹 تم مسح كل البيانات بنجاح.")
-        else:
-            print("🚫 تم إلغاء عملية الحذف.")
+        Args:
+            value (str): القيمة المطلوب البحث عنها
+
+        Returns:
+            int: رقم الصف (0 أو أكثر) أو -1 لو القيمة مش موجودة
+        """
+        for i, iid in enumerate(self.tree.get_children()):
+            row_values = self.tree.item(iid, "values")
+            for cell in row_values:
+                if str(cell).strip().lower() == str(value).strip().lower():
+                    return i
+        return -1

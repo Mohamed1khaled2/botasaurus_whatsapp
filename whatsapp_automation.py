@@ -125,7 +125,7 @@ def run_sender_logic(driver: Driver, sender_phone, numbers, messages):
 
         except NotFoundNumber:
             print(Fore.YELLOW + f"[{sender_phone}] ⚠️ Number {assigned_number} not found")
-
+            # return 
         except Exception as e:
             if "10061" in str(e):
                 print(Fore.RED + f"[{sender_phone}] 🔌 Lost Chrome connection — closing browser.")

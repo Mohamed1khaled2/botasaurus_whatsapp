@@ -2,6 +2,7 @@ import threading
 import whatsapp_automation 
 import customtkinter as ctk
 from gui.view_tree_data import ModernCTkTable
+import conn_database
 
 
 class ChannelsTab(ctk.CTkFrame):
@@ -11,9 +12,7 @@ class ChannelsTab(ctk.CTkFrame):
 
         # ✅ بيانات افتراضية
         headers = ["ID", "Number", "Last Time Used"]
-
-        
-
+        self.connection_database = conn_database.ChanDataBase()
         self.search_after_id = None
 
         # توزيع الأعمدة والصفوف
@@ -29,32 +28,47 @@ class ChannelsTab(ctk.CTkFrame):
         self.search_entry.bind("<KeyRelease>", self.live_search)
 
         # 📋 الجدول
-        self.table = ModernCTkTable(self, headers=headers)
+        self.table = ModernCTkTable(self, headers=headers, data= self.connection_database.get_all_numbers(), checked_column=True)
         self.table.grid(row=1, column=0, columnspan=4, sticky="nsew", padx=10, pady=5)
 
         # 🔘 الأزرار تحت
 
-        open_btn = ctk.CTkButton(self, text="Open Only", command=self.open_only)
+        open_btn = ctk.CTkButton(self, text="Open Only", command=self.open_only, corner_radius=8 , font=('arial', 12, 'bold'))
         open_btn.grid(row=2, column=0, sticky="nsew", padx=5, pady=5)
-        add_number_btn = ctk.CTkButton(self, text="Add Number", command=self.input_dialog)
+        add_number_btn = ctk.CTkButton(self, text="Add Number", command=self.input_dialog, corner_radius=8, font=('arial', 12, 'bold') )
         add_number_btn.grid(row=2, column=1, sticky="nsew", padx=5, pady=5)
 
-        clear_numbers_btn = ctk.CTkButton(self, text='Clear Numbers', fg_color='red', command=self.clear_number)
+        clear_numbers_btn = ctk.CTkButton(self, text='Clear Numbers', fg_color='#7a0e02', hover_color='red',   corner_radius=8,  command=self.clear_number, font=('arial', 12, 'bold'))
         clear_numbers_btn.grid(row=2, column=2, sticky="nsew", padx=5, pady=5)
 
-        deleted_selected_rows_btn = ctk.CTkButton(self, text='Delete Selected Numbers', fg_color='red', command=self.del_selected_number)
+        deleted_selected_rows_btn = ctk.CTkButton(self, text='Delete Selected Numbers', corner_radius=8,  fg_color='#7a0e02', hover_color='red',   command=self.del_selected_number, font=('arial', 12, 'bold'))
         deleted_selected_rows_btn.grid(row=2, column=3, sticky="nsew", padx=5, pady=5)
         
     def clear_number(self):
-        self.table.clear_all_data()
+        self.connection_database.clear_all_numbers()
+        self.table.clear_view()
 
     def del_selected_number(self):
-        self.table.del_selected_rows()
-
+        confirm = ctk.CTkInputDialog(
+            text=f"سيتم حذف {len(self.table.get_selected_rows())} صف. اكتب 'yes' للتأكيد:",
+            title="تأكيد الحذف"
+        ).get_input()
+        
+        print(confirm)
+        
+        if confirm.lower() == 'yes':
+            for n in self.table.get_selected_rows():
+                self.table.delete_rows()
+                self.connection_database.delete_number(n[1])
+        else :
+            print("Not Delete Anything")
+            
     def input_dialog(self):
         dialog = ctk.CTkInputDialog(text="Type in a number:", title="Test")
-        self.table.add_data(dialog.get_input())
-
+        number = dialog.get_input()
+        if number:
+            self.table.add_data(number)
+            self.connection_database.add_number(number, "#")
     # ======================================================
     # 🔍 بحث حي
     # ======================================================
@@ -69,9 +83,9 @@ class ChannelsTab(ctk.CTkFrame):
 
         # لو البحث فاضي → رجع كل الأرقام
         if not keyword:
-            filtered = self.table.connection_database.get_all_numbers()
+            filtered = self.connection_database.get_all_numbers()
         else:
-            filtered = self.table.connection_database.search_numbers(keyword)
+            filtered = self.connection_database.search_numbers(keyword)
 
         # حدث الجدول بالنتائج
         self.table.update_data(filtered)
