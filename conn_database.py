@@ -41,8 +41,8 @@ class ChanDataBase:
             """SELECT * FROM numbers""").fetchall()
         self.con.commit()
 
-        return data 
-    
+        return data
+
     def del_column(self, name_table, name_column):
         query = f"""ALTER TABLE {name_table} 
         DROP COLUMN {name_column}    
@@ -52,7 +52,8 @@ class ChanDataBase:
 
     def add_number(self, number, last_date_used="#"):
 
-        last_id_row = self.cur.execute("SELECT MAX(number_id) FROM numbers").fetchone()
+        last_id_row = self.cur.execute(
+            "SELECT MAX(number_id) FROM numbers").fetchone()
         last_id = last_id_row[0] if last_id_row and last_id_row[0] is not None else 0
         new_id = last_id + 1
 
@@ -61,8 +62,7 @@ class ChanDataBase:
         self.con.commit()
 
         return [new_id, str(number), str(last_date_used)]
-        
-        
+
     def search_numbers(self, keyword: str):
         """
         تبحث عن الأرقام اللي تحتوي على الكلمة المدخلة في عمود number.
@@ -71,18 +71,19 @@ class ChanDataBase:
         query = "SELECT * FROM numbers WHERE CAST(number AS TEXT) LIKE ?"
         result = self.cur.execute(query, (keyword,)).fetchall()
         return result
-    
-    
+
     def clear_all_numbers(self):
         """تحذف كل البيانات من جدول numbers بدون حذف الجدول نفسه"""
         self.cur.execute("DELETE FROM numbers")
         self.con.commit()
         print("🗑️ تم مسح جميع البيانات من الجدول بنجاح.")
-        
+
     def delete_number(self, number):
         """حذف رقم محدد من قاعدة البيانات"""
         self.cur.execute("DELETE FROM numbers WHERE number = ?", (number,))
-        self.con.commit()   
+        self.con.commit()
+
+
 if __name__ == "__main__":
     database = ChanDataBase()
     print(database.clear_all_data())

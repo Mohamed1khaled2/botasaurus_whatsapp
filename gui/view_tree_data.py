@@ -4,13 +4,12 @@ import conn_database
 from manage_profiles import ManageFiles
 
 
-
 class ModernCTkTable(ctk.CTkFrame):
     def __init__(self, parent, headers, *args, **kwargs):
         super().__init__(parent, *args, **kwargs)
-        
+
         self.connection_database = conn_database.ChanDataBase()
-        
+
         self.data = self.connection_database.get_all_numbers()
         self.headers = [""] + headers
         self.checked_state = {}
@@ -22,7 +21,8 @@ class ModernCTkTable(ctk.CTkFrame):
         self.insert_data()
         self.update_scrollbar_visibility()
 
-        self.tree.bind("<Configure>", lambda e: self.update_scrollbar_visibility())
+        self.tree.bind(
+            "<Configure>", lambda e: self.update_scrollbar_visibility())
         self.bind("<Configure>", lambda e: self.update_scrollbar_visibility())
 
     def setup_widgets(self):
@@ -45,12 +45,13 @@ class ModernCTkTable(ctk.CTkFrame):
         style.map("Treeview.Heading",
                   background=[("active", "#1f1f1f")],
                   relief=[("active", "flat")])
-     
+
         style.map("Treeview",
                   background=[("selected", "#4a90e2")],
                   foreground=[("selected", "#ffffff")])
 
-        self.tree = ttk.Treeview(self.table_frame, columns=self.headers, show="headings", selectmode="browse")
+        self.tree = ttk.Treeview(
+            self.table_frame, columns=self.headers, show="headings", selectmode="browse")
         self.tree.pack(fill="both", expand=True, side="left")
 
         for i, header in enumerate(self.headers):
@@ -58,7 +59,8 @@ class ModernCTkTable(ctk.CTkFrame):
             self.tree.heading(header, text=header, anchor="center")
             self.tree.column(header, width=width, anchor="center")
 
-        self.vsb = ctk.CTkScrollbar(self.table_frame, orientation="vertical", command=self.tree.yview)
+        self.vsb = ctk.CTkScrollbar(
+            self.table_frame, orientation="vertical", command=self.tree.yview)
         self.vsb.pack_forget()
         self.tree.configure(yscrollcommand=self.vsb.set)
 
@@ -119,18 +121,17 @@ class ModernCTkTable(ctk.CTkFrame):
         # تحديث حالة الـ scrollbar
         self.update_scrollbar_visibility()
 
-
     def add_data(self, phone_numbers):
-        
+
         if isinstance(phone_numbers, (str, int)):
             phone_numbers = [phone_numbers]
 
         # جمع الأرقام الحالية في الجدول (العمود الثاني)
-        existing_numbers = {str(self.tree.item(iid, "values")[2]).strip() for iid in self.tree.get_children()}
-
+        existing_numbers = {str(self.tree.item(iid, "values")[
+                                2]).strip() for iid in self.tree.get_children()}
 
         print(existing_numbers)
-        
+
         new_rows = []
         for number in phone_numbers:
             if str(number).strip() in existing_numbers:
@@ -155,7 +156,7 @@ class ModernCTkTable(ctk.CTkFrame):
             self.checked_state[iid] = False
 
         self.update_scrollbar_visibility()
-        
+
     def update_scrollbar_visibility(self):
         total_rows = len(self.data)
         row_height = 30
@@ -196,7 +197,7 @@ class ModernCTkTable(ctk.CTkFrame):
                 vals = self.tree.item(iid, "values")[1:]
                 selected.append(vals)
         return selected
-    
+
     def del_selected_rows(self):
         """حذف كل الصفوف اللي عليها ✅ من الجدول وقاعدة البيانات"""
         checked_rows = []
@@ -238,10 +239,10 @@ class ModernCTkTable(ctk.CTkFrame):
         self.data = remaining
 
         self.update_scrollbar_visibility()
-        
+
         ManageFiles().del_profile([checked_rows[0][1]])
         print(f"🗑️ تم حذف {len(checked_rows)} صف بنجاح.")
-            
+
     def clear_all_data(self):
         """مسح جميع البيانات من قاعدة البيانات والجدول"""
         confirm = ctk.CTkInputDialog(
@@ -252,18 +253,15 @@ class ModernCTkTable(ctk.CTkFrame):
         if confirm and confirm.lower().strip() == "yes":
             # حذف من قاعدة البيانات
             self.connection_database.clear_all_numbers()
-            
-            
+
             # حذف من الواجهة
             self.tree.delete(*self.tree.get_children())
             self.checked_state.clear()
             self.data.clear()
             self.update_scrollbar_visibility()
-            
-            
-            # ManageFiles().del_profile([checked_rows[0][1]])
 
-            print(self.tree.get_children())
+            ManageFiles().del_profile(
+                [number for number in self.tree.get_children()])
 
             print("🧹 تم مسح كل البيانات بنجاح.")
         else:
