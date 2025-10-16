@@ -20,10 +20,15 @@ class ChanDataBase:
         self.con = sqlite3.connect(db_path)
         print("📂 Database path:", db_path)
         self.cur = self.con.cursor()
-
+        
+        try :
+            self.create_table()
+        except sqlite3.OperationalError as e:
+            print(e)   
+        
     def create_table(self):
         self.cur.execute(
-            f"""Create Table numbers(number_id INT, number INT, last_user DATE)""")
+            f"""Create Table numbers(number_id INT, number INT, last_used DATE)""")
         self.con.commit()
 
     def rename_already_table(self, name_table, new_name_table):
