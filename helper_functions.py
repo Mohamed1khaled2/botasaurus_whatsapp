@@ -41,20 +41,47 @@ def get_message(folder_path) -> list[str]:
     return text_messages
 
 
+
 def write_message(driver: Driver, message: str, is_message: bool):
-    driver.run_js(f'''
-        const input = document.querySelector('div[contenteditable="true"][role="textbox"][data-tab="{'10' if is_message else '3'}"]');
-        const dataTransfer = new DataTransfer();
-        dataTransfer.setData('text', `{message}`);
+    """
+    دالة آمنة لإرسال نص إلى WhatsApp Web.
+    - تهرب النصوص تلقائيًا لتجنب مشاكل Backtick أو JS Injection.
+    - تهيئ العنصر وتطلق حدث 'input' ليتم التعرف على النص داخل واجهة WhatsApp.
+    """
+    safe_msg = json.dumps(message)  # يحوّل النص إلى JS string آمن
+    tab = '10' if is_message else '3'
 
-        const event = new ClipboardEvent('paste', {{
-            clipboardData: dataTransfer,
-            bubbles: true
-        }});
+    js_code = f"""
+    (function() {{
+        try {{
+            const input = document.querySelector(
+                'div[contenteditable="true"][role="textbox"][data-tab="{tab}"]'
+            );
+            if (!input) return 'NO_INPUT_ELEMENT';
 
-        input.focus();
-        input.dispatchEvent(event);
-    ''')
+            const text = {safe_msg};
+            input.focus();
+            input.textContent = text;
+
+            // إطلاق حدث إدخال ليقرأه React/Vue داخل WhatsApp
+            const ev = new InputEvent('input', {{ bubbles: true }});
+            input.dispatchEvent(ev);
+
+            // وضع caret في النهاية (لضمان إمكانية الإرسال)
+            const range = document.createRange();
+            range.selectNodeContents(input);
+            range.collapse(false);
+            const sel = window.getSelection();
+            sel.removeAllRanges();
+            sel.addRange(range);
+
+            return 'OK';
+        }} catch (e) {{
+            return 'ERR:' + e.toString();
+        }}
+    }})();
+    """
+    return driver.run_js(js_code)
 
 
 def get_profile(data):
