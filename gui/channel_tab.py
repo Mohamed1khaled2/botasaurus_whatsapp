@@ -98,13 +98,38 @@ class ChannelsTab(ctk.CTkFrame):
         self.table.update_data(filtered)
 
     def open_only(self):
-        selected = self.get_selected_numbers()
-        if not selected:
-            print("⚠️ اختر رقم واحد على الأقل من الجدول.")
-            return
+        selected_senders = self.get_selected_numbers()  # أرقام المرسلين المختارة
+        # selected_receivers = self.get_selected_receivers()  # أرقام المستقبلين من جدول أو input
+        # selected_messages = self.messages_tab.get_messages()  # قائمة الرسائل
+
+        # if not selected_senders:
+        #     print("⚠️ اختر رقم واحد على الأقل من المرسلين.")
+        #     return
+        # if not selected_receivers:
+        #     print("⚠️ اختر رقم واحد على الأقل من المستقبلين.")
+        #     return
+        # if not selected_messages:
+        #     print("⚠️ لم يتم تحديد أي رسالة للإرسال.")
+        #     return
+
         print("🟢 Opening browsers only...")
+
+        # تحويل تلقائي للقائمة إلى dict إذا كانت مجرد strings
+        prepared_senders = []
+        for s in selected_senders:
+            if isinstance(s, str):
+                prepared_senders.append({"phone_number": s, "profile": s})
+            elif isinstance(s, dict):
+                prepared_senders.append(s)
+            else:
+                print(f"⚠️ تجاهل عنصر غير مدعوم: {s}")
+
+        # تشغيل فتح المتصفحات في ثريد منفصل وتمرير المستلمين والرسائل
         threading.Thread(
-            target=whatsapp_automation.run,
-            args=(selected, None, None, True),
+            target=lambda: whatsapp_automation.open_browser(
+                prepared_senders,
+            ),
             daemon=True,
         ).start()
+
+
