@@ -1,217 +1,272 @@
-from helper_functions import *
-from botasaurus.browser import browser, Driver, Wait
 import threading
 import random
-from time import sleep
-from typing import List, Dict, Any
+from time import sleep, time
+from typing import List, Dict, Any, Optional
+from botasaurus.browser import Driver, Wait
+from helper_functions import get_profile, make_data_item, write_message, read_json
 
-# ✅ أحداث التحكم العامة
-start_event = threading.Event()
-stop_event = threading.Event()
-send_lock = threading.Lock()
-
-json_data: Dict[str, Any] = read_json()
-
-# 🟢 لتخزين حالة كل متصفح مفتوح
-browsers_threads: List[threading.Thread] = []
-browsers_opened: bool = False
-
-
-
-@browser(profile=get_profile)
-def open_browser(driver:Driver, data):
-    sender_phone:list = data["phone_number"]
-    driver.enable_human_mode()
-    driver.google_get("https://web.whatsapp.com/")
-    sleep(random.uniform(5, 10))
-    driver.run_js(f'document.title = "📞 {sender_phone}";')
-    print(f"[{sender_phone}] ✅ Browser ready.")
-    browsers_threads.append(threading.current_thread)
-    # انتظار start event
-    start_event.wait()
-    while True:
-        assigned_number = None
-        messages = []
-
-        try:
-            with send_lock:  # ✅ 🔒 القفل العام هنا
-                # افتح المحادثة
-                driver.get_element_containing_text("(You)", wait=Wait.VERY_LONG).click()
-                driver.wait_for_element(selector=json_data['input_filed']).click()
-
-                write_message(driver, f"https://web.whatsapp.com/send?phone={assigned_number}")
-                sleep(random.uniform(1, 3))
-
-                try:
-                    driver.wait_for_element(selector=json_data['send_button_1']).click()
-                except:
-                    driver.wait_for_element(selector=json_data['send_button_2']).click()
-
-                sleep(random.uniform(1, 3))
-                driver.get_all_elements_containing_text("web.whatsapp.com")[-1].click()
-                sleep(random.uniform(1, 3))
-
-                if driver.is_element_present(json_data["ok_no_phone"]):
-                    print(f"[{}] {assigned_number} is not on WhatsApp.")
-                    continue
-
-                msg_to_send = random.choice(messages)
-                write_message(driver, msg_to_send)
-
-                try:
-                    driver.wait_for_element(selector=json_data['send_button_1']).click()
-                except:
-                    driver.wait_for_element(selector=json_data['send_button_2']).click()
-
-                print(f"[{selected_category}] ✅ Message sent to {assigned_number} from [{sender_phone}]")
-                sleep(random.uniform(2, 4))
-        except AttributeError:
-            stop_event.set()
-            try:
-                driver.close()
-            except:
-                pass
-            
-        except Exception as e:
-            print(f"[] ❌ Error with : {e}")
-            continue
-
-
-def start_sending(receivers: List[str], messages: List[str]) -> None:
-    """تفعيل إرسال الرسائل بعد فتح المتصفحات
-    :param receivers: قائمة أرقام المستلمين
-    :param messages: قائمة الرسائل
+class WhatsAppSender:
     """
-    global browsers_threads, browsers_opened
+    Driver-per-thread implementation (fallback to the approach you originally used).
+    - Creates a Thread per sender phone.
+    - Each thread instantiates its own Driver (attempts to reuse profile folder).
+    - Keeps mapping self.drivers: phone -> Driver for start_sending().
+    """
 
-    if not browsers_opened or not browsers_threads:
-        print("⚠️ Please open browsers first before sending.")
-        return
+    def __init__(self):
+        self.start_event = threading.Event()
+        self.stop_event = threading.Event()
+        self.send_lock = threading.Lock()
 
-    stop_event.clear()
-    start_event.set()  # تفعيل الـ event لكل المتصفحات
+        # threads & drivers
+        self.browsers_threads: List[threading.Thread] = []
+        self.drivers: Dict[str, Driver] = {}        # phone -> driver
+        self.drivers_lock = threading.Lock()
+        self.browsers_opened: bool = False
 
-    print("🚀 Sending started...")
+        # selectors / settings from your helper json
+        self.json_data = read_json()
 
-    # لكل thread مرتبط بالمتصفح نضيف إرسال الرسائل
-    for t in browsers_threads:
-        if not t.is_alive():
-            t.start()  # شغّل الـ thread لو مش شغّال
+        # event to signal driver collection complete (best-effort)
+        self.all_drivers_ready = threading.Event()
+
+    def _start_driver_for(self, data_item: Dict[str, Any]):
+        """
+        Run in a dedicated Thread: create Driver, open whatsapp web, attach to thread.
+        data_item is a dict from make_data_item(...)
+        """
+        phone = str(data_item.get("phone_number", "unknown"))
+        try:
+            # get (and create) profile path for this phone using helper
+            profile_path = get_profile(data_item)
+            drv: Optional[Driver] = None
+
+            # Try to pass profile path to Driver if supported by your botasaurus version
+            try:
+                if profile_path:
+                    # many Driver implementations accept profile or user_data_dir kw
+                    # we try common parameter name 'profile' first
+                    drv = Driver(profile=profile_path)
+                else:
+                    drv = Driver()
+            except TypeError:
+                # Driver constructor doesn't accept 'profile' — fall back to default Driver()
+                print(f"[{phone}] Driver(...) doesn't accept 'profile' parameter; falling back to default Driver() (session persistence may not work).")
+                drv = Driver()
+            except Exception as e:
+                # Unexpected error constructing driver with profile — fallback to default
+                print(f"[{phone}] Failed to start Driver(profile=...): {e} — falling back to Driver()")
+                drv = Driver()
+
+            # attach to current thread for introspection (optional)
+            current = threading.current_thread()
+            current.drv = drv
+            current.phone = phone
+
+            # expose centrally
+            with self.drivers_lock:
+                self.drivers[phone] = drv
+
+            # open WhatsApp Web
+            try:
+                drv.enable_human_mode()
+            except Exception:
+                # if enable_human_mode not available, ignore
+                pass
+
+            drv.google_get("https://web.whatsapp.com/")
+            sleep(random.uniform(4, 8))
+
+            # set window title for clarity
+            try:
+                drv.run_js(f'document.title = "📞 {phone}";')
+            except Exception:
+                pass
+
+            print(f"[{phone}] ✅ WhatsApp browser ready. (Thread: {current.name})")
+
+            # signal readiness if we've collected at least one driver
+            # (caller uses other mechanisms to decide when to start sending)
+            self.all_drivers_ready.set()
+
+            # keep thread alive until stop_event set
+            while not self.stop_event.is_set():
+                sleep(1)
+
+            # when stop_event set, close driver cleanly if possible
+            try:
+                drv.close()
+            except Exception:
+                pass
+
+        except Exception as e:
+            print(f"[{phone}] exception in driver thread: {e}")
+
+    def open_browser_only(self, numbers_open: List[str]):
+        """
+        Create a Thread + Driver for each phone in numbers_open.
+        This guarantees multiple independent browser windows.
+        """
+        # prepare data items
+        data_items = [make_data_item(p) for p in numbers_open]
+
+        # start one thread per data item
+        for item in data_items:
+            t = threading.Thread(target=self._start_driver_for, args=(item,), daemon=True)
+            t.start()
+            self.browsers_threads.append(t)
+
+        # set flag
+        self.browsers_opened = True
+        print(f"Started {len(self.browsers_threads)} browser thread(s). Log in to each if needed.")
+        # Note: do NOT join here — we want threads to keep running and allow start_sending()
+
+    def _collect_drivers(self, timeout: float = 30.0) -> Dict[str, Driver]:
+        """
+        Wait up to `timeout` seconds for threads to attach drivers,
+        return the mapping phone -> driver (best-effort).
+        """
+        end = time() + timeout
+        while time() < end:
+            with self.drivers_lock:
+                if len(self.drivers) >= 1:
+                    # if we've got at least one driver, return what's available (best-effort)
+                    return dict(self.drivers)
+            sleep(0.5)
+        # final return whatever we have
+        with self.drivers_lock:
+            return dict(self.drivers)
+
+    def logic_to_send(self, driver: Driver, assigned_number: str, receiver: str, message: str):
+        """
+        Low-level sending actions. Assumes helper_functions.write_message and selectors exist.
+        """
+        try:
+            search_box = driver.get_element_containing_text(
+                "Search or start a new chat", wait=Wait.VERY_LONG
+            )
+            search_box.click()
+            write_message(driver, assigned_number, is_message=False)
+            sleep(random.uniform(1, 2.5))
+
+            first_chat = driver.is_element_present(selector=self.json_data["first_chat"])
+            if first_chat:
+                driver.wait_for_element(selector=self.json_data["first_chat"]).click()
+            else:
+                driver.wait_for_element(selector=self.json_data["clear_button"], wait=Wait.VERY_LONG).click()
+                print(f"[{receiver}] ⚠️ Number {assigned_number} not found")
+
+            driver.wait_for_element(selector=self.json_data["type_message_ele"]).click()
+            write_message(driver, message, is_message=True)
+            sleep(random.uniform(1.5, 3.0))
+
+            try:
+                driver.wait_for_element(selector=self.json_data["send_button_1"]).click()
+            except Exception:
+                driver.wait_for_element(selector=self.json_data["send_button_2"]).click()
+
+            print(f"[{receiver}] ✅ Sent to {assigned_number}")
+
+        except Exception as e:
+            print(f">>>> send error {e}")
+
+    def start_sending(
+        self,
+        senders: List[str],
+        recipients: List[str],
+        messages: List[str],
+        min_delay: float = 1.0,
+        max_delay: float = 3.0,
+        wait_for_drivers_timeout: float = 30.0,
+        background: bool = False,
+        on_message_sent=None
+    ):
+        """
+        Round-robin sending using drivers created by open_browser_only.
+        - senders: list of phone numbers that must match opened browser phones.
+        - recipients: list of targets.
+        - messages: list of messages (randomly chosen per send).
+        """
+        
+        
+        print(self.browsers_opened)
+
+        if not self.browsers_opened:
+            raise RuntimeError("Browsers are not open. Call open_browser_only(...) first.")
+
+        # wait/collect drivers
+        drivers = self._collect_drivers(timeout=wait_for_drivers_timeout)
+        if not drivers:
+            raise RuntimeError("No browser drivers found — make sure browsers opened and attached.")
+
+        # map senders to drivers
+        sender_drivers: Dict[str, Driver] = {}
+        for s in senders:
+            key = str(s)
+            if key in drivers:
+                sender_drivers[key] = drivers[key]
+            else:
+                raise ValueError(f"Sender {s} not found among opened browsers: {list(drivers.keys())}")
+
+        n_senders = len(senders)
+
+        def _send_loop():
+            print(f"Starting sending: {len(recipients)} recipients, {n_senders} senders.")
+            for idx, recipient in enumerate(recipients):
+                if self.stop_event.is_set():
+                    print("Stop signal received. Aborting sends.")
+                    break
+                sender_index = idx % n_senders
+                sender_phone = str(senders[sender_index])
+                driver = sender_drivers[sender_phone]
+
+                message = random.choice(messages)
+
+                try:
+                    with self.send_lock:
+                        self.logic_to_send(driver, sender_phone, recipient, message)
+                        if on_message_sent:
+                            on_message_sent(recipient, sender_phone)
+                except Exception as e:
+                    print(f"Error sending from {sender_phone} to {recipient}: {e}")
+
+                sleep(random.uniform(min_delay, max_delay))
+
+            print("Finished start_sending run.")
+
+        if background:
+            t = threading.Thread(target=_send_loop, daemon=True)
+            t.start()
+            return t
+        else:
+            _send_loop()
+
+    def stop_sending(self):
+        """Signal browser threads to exit and stop any in-progress sending."""
+        self.stop_event.set()
+        # optionally join threads if you want to wait for them to exit:
+        for t in self.browsers_threads:
+            if t.is_alive():
+                t.join(timeout=1)
 
 
-# def open_browser_for_sender(
-#     sender_data: Dict[str, str],
-#     receivers: List[str],
-#         messages: List[str]):
-#     """
-#     فتح متصفح واحد لكل sender والعمل على الإرسال داخله مباشرة
-#     """
-#     @browser(profile=get_profile)
-#     def inner(driver: Driver):
-#         sender_phone = sender_data["phone_number"]
-#         driver.enable_human_mode()
-#         driver.google_get("https://web.whatsapp.com/")
-#         sleep(random.uniform(5, 10))
-#         driver.run_js(f'document.title = "📞 {sender_phone}";')
-#         print(f"[{sender_phone}] ✅ Browser ready.")
+if __name__ == "__main__":
+    sender = WhatsAppSender()
+    senders = ["201103738707"]
+    sender.open_browser_only(senders)
 
-#         # انتظار start event
-#         start_event.wait()
+    input("بعد تسجيل الدخول في كل نافذة اضغط Enter لبدء الإرسال...")
 
-#         for receiver in receivers:
-#             if stop_event.is_set():
-#                 print(f"[{sender_phone}] 🛑 Sending stopped for this sender.")
-#                 break
+    recipients = ["201002097448", "201013416458", "201093998000"]
+    messages = ["أهلاً 🌟", "رسالة تجريبية", "مرحباً، هذا اختبار"]
 
-#             receiver = receiver.strip()
-#             if not receiver:
-#                 continue
+    sender.start_sending(senders, recipients, messages, min_delay=1.5, max_delay=3.5, background=True)
 
-#             try:
-#                 with send_lock:
-#                     # افتح مربع الكتابة
-#                     driver.get_element_containing_text("(You)", wait=Wait.VERY_LONG).click()
-#                     driver.wait_for_element(selector=json_data['input_filed']).click()
+    print("العملية شغالة في الخلفية... اضغط Ctrl + C للإيقاف.")
 
-#                     # افتح شات الرقم
-#                     write_message(driver, f"https://web.whatsapp.com/send?phone={receiver}")
-#                     sleep(random.uniform(1, 3))
-
-#                     try:
-#                         driver.wait_for_element(selector=json_data['send_button_1']).click()
-#                     except:
-#                         driver.wait_for_element(selector=json_data['send_button_2']).click()
-
-#                     sleep(random.uniform(1, 3))
-#                     driver.get_all_elements_containing_text("web.whatsapp.com")[-1].click()
-#                     sleep(random.uniform(1, 3))
-
-#                     # تحقق من وجود الرقم
-#                     if driver.is_element_present(json_data["ok_no_phone"]):
-#                         print(f"[{sender_phone}] ⚠️ {receiver} is not on WhatsApp.")
-#                         continue
-
-#                     # أرسل الرسالة
-#                     msg_to_send: str = random.choice(messages)
-#                     write_message(driver, msg_to_send)
-
-#                     try:
-#                         driver.wait_for_element(selector=json_data['send_button_1']).click()
-#                     except:
-#                         driver.wait_for_element(selector=json_data['send_button_2']).click()
-
-#                     print(f"[{sender_phone}] ✅ Message sent to {receiver}")
-#                     sleep(random.uniform(2, 4))
-
-#             except Exception as e:
-#                 print(f"[{sender_phone}] ❌ Error sending to {receiver}: {e}")
-#                 continue
-
-#     inner()
+    # 🔴 هـــــــــــــام: منع غلق البرنامج
+    while True:
+        sleep(1)
 
 
-# def open_all_browsers(senders: List[str]) -> None:
-#     """
-#     فتح كل المتصفحات فقط بدون مشاكل serialization
-#     """
-#     global browsers_threads, browsers_opened
-
-#     browsers_threads.clear()
-#     stop_event.clear()
-#     start_event.clear()
-#     browsers_opened = False
-
-#     print(f"📌 Attempting to open {len(senders)} browsers...")
-
-#     for sender in senders:
-#         if isinstance(sender, str):
-#             sender_data = {"phone_number": sender, "profile": sender}
-#         elif isinstance(sender, dict):
-#             sender_data = sender
-#         else:
-#             print(f"⚠️ Skipping unsupported sender type: {sender}")
-#             continue
-
-#         # t = threading.Thread(target=open_browser_for_sender, args=(sender_data, receivers, messages), daemon=True)
-#         # t.start()
-#         # browsers_threads.append(t)
-
-#     browsers_opened = True
-#     print(f"🟢 {len(browsers_threads)} browsers are now open and ready.")
-
-
-# def start_sending() -> None:
-#     """تفعيل إرسال الرسائل بعد فتح المتصفحات"""
-#     if not browsers_opened or not browsers_threads:
-#         print("⚠️ Please open browsers first before sending.")
-#         return
-
-#     stop_event.clear()
-#     start_event.set()
-#     print("🚀 Sending started...")
-
-
-def stop_sending() -> None:
-    """إيقاف عملية الإرسال فقط بدون إغلاق المتصفحات"""
-    stop_event.set()
-    print("🛑 Sending stopped (browsers remain open).")
+whatsapp_app = WhatsAppSender()

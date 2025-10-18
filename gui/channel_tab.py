@@ -1,8 +1,9 @@
 import threading
-import whatsapp_automation 
 import customtkinter as ctk
 from gui.view_tree_data import ModernCTkTable
 import conn_database
+from whatsapp_automation import whatsapp_app
+
 
 class ChannelsTab(ctk.CTkFrame):
     def __init__(self, master, on_selection_changed=None, **kwargs):
@@ -11,6 +12,7 @@ class ChannelsTab(ctk.CTkFrame):
         self.on_selection_changed = on_selection_changed  # ✅ callback عند التغيير
         self.connection_database = conn_database.ChanDataBase()
         self.search_after_id = None
+        self.whatsapp_sender = whatsapp_app
 
         headers = ["ID", "Number", "Last Time Used"]
         self.columnconfigure((0, 1, 2, 3), weight=1)
@@ -98,38 +100,9 @@ class ChannelsTab(ctk.CTkFrame):
         self.table.update_data(filtered)
 
     def open_only(self):
-        selected_senders = self.get_selected_numbers()  # أرقام المرسلين المختارة
-        # selected_receivers = self.get_selected_receivers()  # أرقام المستقبلين من جدول أو input
-        # selected_messages = self.messages_tab.get_messages()  # قائمة الرسائل
-
-        # if not selected_senders:
-        #     print("⚠️ اختر رقم واحد على الأقل من المرسلين.")
-        #     return
-        # if not selected_receivers:
-        #     print("⚠️ اختر رقم واحد على الأقل من المستقبلين.")
-        #     return
-        # if not selected_messages:
-        #     print("⚠️ لم يتم تحديد أي رسالة للإرسال.")
-        #     return
-
-        print("🟢 Opening browsers only...")
-
-        # تحويل تلقائي للقائمة إلى dict إذا كانت مجرد strings
-        prepared_senders = []
-        for s in selected_senders:
-            if isinstance(s, str):
-                prepared_senders.append({"phone_number": s, "profile": s})
-            elif isinstance(s, dict):
-                prepared_senders.append(s)
-            else:
-                print(f"⚠️ تجاهل عنصر غير مدعوم: {s}")
-
-        # تشغيل فتح المتصفحات في ثريد منفصل وتمرير المستلمين والرسائل
-        threading.Thread(
-            target=lambda: whatsapp_automation.open_browser(
-                prepared_senders,
-            ),
-            daemon=True,
-        ).start()
+        
+        selected_numbers = self.get_selected_numbers()
+        
+        threading.Thread(target=self.whatsapp_sender.open_browser_only, args=(selected_numbers, ), daemon=True).start()
 
 

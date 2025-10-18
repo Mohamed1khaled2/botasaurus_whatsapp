@@ -1,7 +1,10 @@
-import multiprocessing
+import whatsapp_automation
 from gui.main_window import App
 
+# initialization
+
 if __name__ == "__main__":
-    multiprocessing.freeze_support()
+    
+    
     app = App()
     app.mainloop()

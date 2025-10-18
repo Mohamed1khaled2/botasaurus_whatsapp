@@ -1,13 +1,14 @@
 import customtkinter as ctk
 from gui.view_tree_data import ModernCTkTable
 import threading
-import whatsapp_automation
+from whatsapp_automation import whatsapp_app
 import time
 
 class SenderTapWindow(ctk.CTkFrame):
     def __init__(self, master, messages_tab, channels_tab, **kwargs):
         super().__init__(master, **kwargs)
         
+        self.whatsapp_sender = whatsapp_app
         self.messages_tab = messages_tab
         self.channels_tab = channels_tab
 
@@ -38,7 +39,7 @@ class SenderTapWindow(ctk.CTkFrame):
         self.stop_btn.grid(row=2, column=1)
         self.import_numbers_btn = ctk.CTkButton(self, text="Import Numbers", command=self.import_numbers_fun, font=('arial', 12, 'bold'))
         self.import_numbers_btn.grid(row=2, column=2)
-        self.clear_numbers = ctk.CTkButton(self, text="Clear Numbers", command=self.clear_numers_fun, font=('arial', 12, 'bold'))
+        self.clear_numbers = ctk.CTkButton(self, text="Clear Numbers", command=self.clear_numbers_fun, font=('arial', 12, 'bold'))
         self.clear_numbers.grid(row=2, column=3)
 
     def update_selected_numbers(self, numbers):
@@ -51,28 +52,54 @@ class SenderTapWindow(ctk.CTkFrame):
         
 
        # 🚀 بدء الإرسال
+# 🚀 بدء الإرسال
     def start_sending(self):
         if not self.selected_numbers or not self.messages or not self.data_numbers:
             print("⚠️ تأكد من اختيار القنوات والأرقام والرسائل أولًا.")
             return
 
-        senders = [{"phone_number": num, "profile": num} for num in self.selected_numbers]
-        receivers = [row[0] for row in self.data_numbers]
-        messages = self.messages
+        # ✅ افتح المتصفحات مرة واحدة فقط
+        # if not self.whatsapp_sender.browsers_opened:
+        #     self.whatsapp_sender.open_browser_only(self.selected_numbers)
+        #     print("💬 سجل دخول الواتساب في كل نافذة، ثم اضغط Run مرة أخرى")
+        #     return
 
-        print(f"🚀 Starting sending...\nSenders: {len(senders)}\nReceivers: {len(receivers)}\nMessages: {len(messages)}")
+        # ✅ ابدأ الإرسال بالخلفية
+        threading.Thread(
+            target=self.whatsapp_sender.start_sending,
+            args=(
+                self.selected_numbers,
+                self.data_numbers,
+                self.messages,
+                1.5,
+                3.5,
+                True
+            ),
+            kwargs={'on_message_sent': self.update_gui},  # 👈 تمرير callback
+            daemon=True
+        ).start()
+        
+        
+    def update_gui(self, number, channel):
+        # لازم التنفيذ في Main Thread
+        self.after(0, lambda: self._safe_gui_update(number, channel))
 
-    # شغل الإرسال في Thread علشان الـ UI ما يعلقش
-        threading.Thread(target=whatsapp_automation.start_sending, args=(senders, receivers, messages), daemon=True).start()
+    def _safe_gui_update(self, number, channel):
+        row_index = self.view_tree_results.get_row_index_by_value(number)
+        if row_index >= 0:
+            self.view_tree_results.update_cell_value(row_index, 1, channel)
+
+
 
     def stopping_sending(self):
-        print("⛔ Stopping sending...")
-        try:
-            whatsapp_automation.stop_sending()
-        except Exception as e:
-            print(f"⚠️ خطأ أثناء محاولة إيقاف الإرسال: {e}")
+        pass
+    #     print("⛔ Stopping sending...")
+    #     try:
+    #         whatsapp_automation.stop_sending()
+    #     except Exception as e:
+    #         print(f"⚠️ خطأ أثناء محاولة إيقاف الإرسال: {e}")
 
-    def clear_numers_fun(self):
+    def clear_numbers_fun(self):
         self.data_numbers.clear()
         self.view_tree_results.clear()
         print("🧹 Numbers cleared from table.")
