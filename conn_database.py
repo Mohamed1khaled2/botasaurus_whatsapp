@@ -6,44 +6,44 @@ import sqlite3
 class ChanDataBase:
     def __init__(self):
         # تحديد مسار قاعدة البيانات سواء exe أو script
-        if getattr(sys, 'frozen', False):
-            base_path = os.path.dirname(sys.executable)
+        if getattr(sys, "frozen", False):
+            # لو EXE
+            appdata = os.getenv("APPDATA")  # مسار AppData
+            base_path = os.path.join(appdata, "MyProgram")  # مجلد خاص بالبرنامج
         else:
+            # لو script
             base_path = os.path.dirname(os.path.abspath(__file__))
 
         db_path = os.path.join(base_path, "database", "chan.db")
 
-        # تأكد إن المجلد موجود
+        # تأكد من وجود المجلد
         os.makedirs(os.path.dirname(db_path), exist_ok=True)
 
         # افتح الاتصال بقاعدة البيانات
         self.con = sqlite3.connect(db_path)
-        print("📂 Database path:", db_path)
         self.cur = self.con.cursor()
-        
-        try :
-            self.create_table()
-        except sqlite3.OperationalError as e:
-            print(e)   
-        
-    def create_table(self):
+
+        print("📂 Database path:", db_path)
+
+        # إنشاء الجداول تلقائيًا
+        self.create_tables()
+
+    def create_tables(self):
         self.cur.execute(
-            f"""Create Table numbers(number_id INT, number INT, last_used DATE)""")
+            f"""Create Table IF NOT EXISTS numbers(number_id INT, number INT, last_used DATE)"""
+        )
         self.con.commit()
 
     def rename_already_table(self, name_table, new_name_table):
-        self.cur.execute(
-            f"""RENAME TABLE {name_table} TO {new_name_table}""")
+        self.cur.execute(f"""RENAME TABLE {name_table} TO {new_name_table}""")
         self.con.commit()
 
-    def add_filed_to_table(self, table_name,  name_filed, type_filed):
-        self.cur.execute(
-            f"""ALTER TABLE {table_name} ADD {name_filed} {type_filed}""")
+    def add_filed_to_table(self, table_name, name_filed, type_filed):
+        self.cur.execute(f"""ALTER TABLE {table_name} ADD {name_filed} {type_filed}""")
         self.con.commit()
 
     def get_all_numbers(self):
-        data = self.cur.execute(
-            """SELECT * FROM numbers""").fetchall()
+        data = self.cur.execute("""SELECT * FROM numbers""").fetchall()
         self.con.commit()
 
         return data
@@ -57,8 +57,7 @@ class ChanDataBase:
 
     def add_number(self, number, last_date_used="#"):
 
-        last_id_row = self.cur.execute(
-            "SELECT MAX(number_id) FROM numbers").fetchone()
+        last_id_row = self.cur.execute("SELECT MAX(number_id) FROM numbers").fetchone()
         last_id = last_id_row[0] if last_id_row and last_id_row[0] is not None else 0
         new_id = last_id + 1
 

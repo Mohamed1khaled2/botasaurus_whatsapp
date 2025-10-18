@@ -241,22 +241,14 @@ class ModernCTkTable(ctk.CTkFrame):
         """
         for i, iid in enumerate(self.tree.get_children()):
             row_values = self.tree.item(iid, "values")
+            print(row_values)
             for cell in row_values:
-                if str(cell).strip().lower() == str(value).strip().lower():
+                if str(cell).strip().lower() == str(value[0]).strip().lower():
                     return i
         return -1
     
     
     def update_cell_value(self, row_index: int, col_index: int, new_value: str) -> None:
-        """
-        تحديث قيمة خلية معينة داخل الجدول بناءً على رقم الصف والعمود.
-
-        Args:
-            row_index (int): رقم الصف (يبدأ من 0)
-            col_index (int): رقم العمود (يبدأ من 0، ولو فيه عمود ✅ بيتحسب كمان)
-            new_value (str): القيمة الجديدة اللي هتتحط
-        """
-        # الحصول على كل صفوف الجدول
         items = self.tree.get_children()
         if row_index < 0 or row_index >= len(items):
             print("⚠️ رقم الصف غير صالح.")
@@ -265,26 +257,30 @@ class ModernCTkTable(ctk.CTkFrame):
         iid = items[row_index]
         values = list(self.tree.item(iid, "values"))
 
-        if col_index < 0 or col_index >= len(values):
+        if col_index < 0:
             print("⚠️ رقم العمود غير صالح.")
             return
 
-        # تعديل القيمة المطلوبة
-        values[col_index] = new_value
+        # ✅ حسب وجود عمود ✅
+        real_col_index = col_index - 1 if self.checked_column else col_index
+
+        # تأكد طول values كفاية
+        while len(values) <= real_col_index:
+            values.append("")  # إضافة قيم فارغة لأي أعمدة ناقصة
+
+        values[real_col_index] = new_value
         self.tree.item(iid, values=values)
 
-        # تحديث النسخة المحلية self.data لو حابب تحافظ على التزامن
+        # تحديث self.data
         if row_index < len(self.data):
             row_data = list(self.data[row_index])
             try:
-                # لو فيه عمود ✅ يبقى أول عمود مش من الداتا الأصلية
-                real_col_index = col_index - 1 if self.checked_column else col_index
                 if 0 <= real_col_index < len(row_data):
                     row_data[real_col_index] = new_value
                     self.data[row_index] = tuple(row_data)
             except Exception as e:
                 print(f"⚠️ خطأ أثناء تحديث self.data: {e}")
-                
+
                 
     def delete_rows(self, rows_to_delete: Optional[List[Tuple[Any, ...]]] = None) -> None:
         """
