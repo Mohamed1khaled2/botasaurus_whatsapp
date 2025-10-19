@@ -2,3 +2,5 @@ profiles/
 error_logs/
 __pycache__/
 database/
+main.dist/
+main.build/
