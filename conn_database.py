@@ -61,7 +61,7 @@ class ChanDataBase:
         last_id = last_id_row[0] if last_id_row and last_id_row[0] is not None else 0
         new_id = last_id + 1
 
-        query = "INSERT INTO numbers (number_id, number, last_user) VALUES (?, ?, ?)"
+        query = "INSERT INTO numbers (number_id, number, last_used) VALUES (?, ?, ?)"
         self.cur.execute(query, (new_id, str(number), str(last_date_used)))
         self.con.commit()
 

@@ -1,7 +1,7 @@
 import ctypes
 from gui.tab_view import MyTabView
 import customtkinter as ctk
-
+from whatsapp_automation import whatsapp_app
 
 
 class SenderWhatsappWindow(ctk.CTkToplevel):
@@ -43,3 +43,4 @@ class SenderWhatsappWindow(ctk.CTkToplevel):
                 self.parent.available_tabs.append(num)
                 self.parent.available_tabs.sort()
         self.destroy()
+        whatsapp_app.close_drivers()

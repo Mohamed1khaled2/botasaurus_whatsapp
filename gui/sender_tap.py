@@ -6,19 +6,22 @@ import time
 
 
 class SenderTapWindow(ctk.CTkFrame):
-    def __init__(self, master, messages_tab, channels_tab, **kwargs):
+    def __init__(self, master, messages_tab, channels_tab,setting_tab,  **kwargs):
         super().__init__(master, **kwargs)
 
         self.whatsapp_sender = whatsapp_app
         self.messages_tab = messages_tab
         self.channels_tab = channels_tab
+        self.settings_tab = setting_tab
 
         self.selected_numbers = []
         self.messages = []
         self.data_numbers = []
+        self.settings = {}
 
         self.channels_tab.on_selection_changed = self.update_selected_numbers
         self.messages_tab.on_messages_changed = self.update_messages
+        self.settings_tab.on_settings_changed = self.settings_changed
 
         self.columnconfigure((0, 1, 2, 3, 4), weight=1)
         self.rowconfigure((0), weight=1)
@@ -60,7 +63,7 @@ class SenderTapWindow(ctk.CTkFrame):
 
         self.resume_btn = ctk.CTkButton(
             self,
-            text="Resume Button",
+            text="Resume Sending",
             command=self.resume_fun,
             font=("arial", 12, "bold"),
         )
@@ -94,18 +97,17 @@ class SenderTapWindow(ctk.CTkFrame):
         self.messages = messages
         print("💬 Messages Updated:", messages)
 
+    def settings_changed(self, settings:dict):
+        self.settings = settings
+        print("settings Updated:", settings)
+
+
+
     # 🚀 بدء الإرسال
     def start_sending(self):
         if not self.selected_numbers or not self.messages or not self.data_numbers:
             print("⚠️ تأكد من اختيار القنوات والأرقام والرسائل أولًا.")
             return
-
-        # ✅ افتح المتصفحات مرة واحدة فقط
-        # if not self.whatsapp_sender.browsers_opened:
-        #     self.whatsapp_sender.open_browser_only(self.selected_numbers)
-        #     print("💬 سجل دخول الواتساب في كل نافذة، ثم اضغط Run مرة أخرى")
-        #     return
-
         # ✅ ابدأ الإرسال بالخلفية
         threading.Thread(
             target=self.whatsapp_sender.start_sending,

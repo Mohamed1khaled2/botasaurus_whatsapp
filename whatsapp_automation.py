@@ -32,12 +32,17 @@ class WhatsAppSender:
 
     # ------------------------ إدارة المتصفحات ------------------------
     def _start_driver_for(self, data_item: Dict[str, Any]):
+        
+        # توليد أبعاد عشوائية
+        width = random.randint(700, 1200)
+        height = random.randint(500, 900)
+        
         phone = str(data_item.get("phone_number", "unknown"))
         try:
             profile_path = get_profile(data_item)
             drv: Optional[Driver] = None
             try:
-                drv = Driver(profile=profile_path) if profile_path else Driver()
+                drv = Driver(profile=profile_path, chrome_args=[f"--window-size={width},{height}"]) if profile_path else Driver()
             except Exception:
                 drv = Driver()
 
@@ -46,6 +51,8 @@ class WhatsAppSender:
 
             try:
                 drv.enable_human_mode()
+                drv.set_window_size(800, 600)
+
             except Exception:
                 pass
 
@@ -66,18 +73,62 @@ class WhatsAppSender:
             print(f"[{phone}] exception in driver thread: {e}")
 
     def open_browser_only(self, numbers_open: List[str]):
-        data_items = [make_data_item(p) for p in numbers_open]
-        for item in data_items:
-            t = threading.Thread(
-                target=self._start_driver_for, args=(item,), daemon=True
-            )
-            t.start()
-            self.browsers_threads.append(t)
-        self.browsers_opened = True
+    
+        for k,v in self.drivers.items():
+            if k in numbers_open:
+                try:
+                    index_ = numbers_open.index(k)
+                    try:
+                         self.drivers.get(k).current_url
+                         numbers_open.pop(index_)
+                    except Exception as e:
+                        pass
+                except Exception as e :
+                    print(e)     
+                    
+        try:
+            if len(numbers_open) == 0 : return 
+            data_items = [make_data_item(p) for p in numbers_open]
+            for item in data_items:
+                t = threading.Thread(
+                    target=self._start_driver_for, args=(item,), daemon=True
+                )
+                t.start()
+                self.browsers_threads.append(t)
+            self.browsers_opened = True
+        except Exception as e:
+            print(f">> {e}")
+    
         print(
             f"Started {len(self.browsers_threads)} browser thread(s). Log in to each if needed."
         )
 
+    # add this because i need if sender whatsapp tap close every whatsapp close
+    def close_drivers(self):
+        # إشارة لإيقاف الحلقات داخل Threads
+        self.stop_event.set()
+
+        # إغلاق جميع الـ Drivers المفتوحين
+        with self.drivers_lock:
+            for phone, drv in self.drivers.items():
+                try:
+                    print(f"[{phone}] 🔻 Closing driver...")
+                    drv.close()
+                except Exception as e:
+                    print(f"[{phone}] ⚠️ Error closing driver: {e}")
+            self.drivers.clear()
+
+        # انتظار انتهاء جميع الـ Threads
+        for t in self.browsers_threads:
+            try:
+                t.join(timeout=3)
+            except Exception:
+                pass
+
+        self.browsers_threads.clear()
+        self.browsers_opened = False
+        print("✅ All drivers closed and threads cleaned.")
+    
     def _collect_drivers(self, timeout: float = 30.0) -> Dict[str, Driver]:
         from time import time
 
@@ -101,6 +152,7 @@ class WhatsAppSender:
             search_box.click()
             write_message(driver, assigned_number, is_message=False)
             sleep(random.uniform(1, 2.5))
+            driver.short_random_sleep()
 
             first_chat = driver.is_element_present(
                 selector=self.json_data["first_chat"]
@@ -115,8 +167,9 @@ class WhatsAppSender:
                 return "Number Not Found or Not Have Whatsapp"
 
             driver.wait_for_element(selector=self.json_data["type_message_ele"]).click()
+            driver.long_random_sleep()
             write_message(driver, message, is_message=True)
-            sleep(random.uniform(1.5, 3.0))
+            sleep(random.uniform(1.5, 5))
             try:
                 driver.wait_for_element(
                     selector=self.json_data["send_button_1"]
