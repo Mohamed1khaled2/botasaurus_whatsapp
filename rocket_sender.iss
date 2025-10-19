@@ -17,16 +17,32 @@ DisableDirPage=no
 DisableProgramGroupPage=no
 
 [Files]
+; انسخ كل ملفات النسخة المستقلة اللي عملها Nuitka
 Source: "main.dist\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
 ; شورتكوت في Start Menu
 Name: "{autoprograms}\Rocket Sender"; Filename: "{app}\Rocket Sender.exe"; IconFilename: "{app}\rocket.ico"
-; شورتكوت على سطح المكتب للمستخدم الحالي
-Name: "{userdesktop}\Rocket Sender"; Filename: "{app}\Rocket Sender.exe"; IconFilename: "{app}\rocket.ico"
+; شورتكوت على سطح المكتب
+Name: "{commondesktop}\Rocket Sender"; Filename: "{app}\Rocket Sender.exe"; IconFilename: "{app}\rocket.ico"
 
 [Run]
+; تشغيل البرنامج بعد التثبيت
 Filename: "{app}\Rocket Sender.exe"; Description: "تشغيل Rocket Sender"; Flags: nowait postinstall skipifsilent
 
 [UninstallDelete]
+; حذف كل الملفات عدا مجلد database
 Type: filesandordirs; Name: "{app}"
+
+[Code]
+function ShouldDelete(): Boolean;
+begin
+  if DirExists(ExpandConstant('{app}\database')) then
+  begin
+    Log('Skipping deletion of database folder.');
+    DelTree(ExpandConstant('{app}'), True, True, True);
+    Result := False;
+  end
+  else
+    Result := True;
+end;
