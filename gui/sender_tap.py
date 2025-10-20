@@ -2,11 +2,11 @@ import customtkinter as ctk
 from gui.view_tree_data import ModernCTkTable
 import threading
 from whatsapp_automation import whatsapp_app
-import time
+from tkinter import IntVar, StringVar
 
 
 class SenderTapWindow(ctk.CTkFrame):
-    def __init__(self, master, messages_tab, channels_tab,setting_tab,  **kwargs):
+    def __init__(self, master, messages_tab, channels_tab, setting_tab, **kwargs):
         super().__init__(master, **kwargs)
 
         self.whatsapp_sender = whatsapp_app
@@ -28,12 +28,25 @@ class SenderTapWindow(ctk.CTkFrame):
         self.rowconfigure((1), weight=2)
         self.rowconfigure((2), weight=1)
 
+        self.numbers_sendit = IntVar()
+        self.numbers_nophone = IntVar()
+        self.count_numbers_sendit_var = StringVar(value="Sent: 0")
+        self.count_numbers_nophone_var = StringVar(value="No Phone: 0")
+
         self.count_numbers_sent_it = ctk.CTkLabel(
-            self, text="Sent: ", font=("arial", 20, "bold")
+            self,
+            textvariable=self.count_numbers_sendit_var,
+            font=("arial", 20, "bold"),
+            bg_color="green",
+            corner_radius=5,
         )
-        self.count_numbers_sent_it.grid(row=0, column=0, columnspan=2)
+        self.count_numbers_sent_it.grid(row=0, column=0, columnspan=3)
         self.count_numbers_no_phone = ctk.CTkLabel(
-            self, text="No Phone: ", font=("arial", 20, "bold")
+            self,
+            textvariable=self.count_numbers_nophone_var,
+            font=("arial", 20, "bold"),
+            bg_color="gray",
+            corner_radius=5,
         )
         self.count_numbers_no_phone.grid(row=0, column=2, columnspan=2)
 
@@ -86,6 +99,10 @@ class SenderTapWindow(ctk.CTkFrame):
         )
         self.clear_numbers.grid(row=2, column=4)
 
+    def _increase(self, stringvar, intvar, text: str):
+        intvar.set(intvar.get() + 1)
+        stringvar.set(f"{text}: {intvar.get()}")
+
     def resume_fun(self):
         whatsapp_app.resume_sending()
 
@@ -97,11 +114,9 @@ class SenderTapWindow(ctk.CTkFrame):
         self.messages = messages
         print("💬 Messages Updated:", messages)
 
-    def settings_changed(self, settings:dict):
+    def settings_changed(self, settings: dict):
         self.settings = settings
         print("settings Updated:", settings)
-
-
 
     # 🚀 بدء الإرسال
     def start_sending(self):
@@ -126,6 +141,12 @@ class SenderTapWindow(ctk.CTkFrame):
     def update_gui(self, number, channel):
         if channel == None:
             print("NOT sender ")
+            self._increase(
+                self.count_numbers_nophone_var, self.numbers_nophone, "No Phone"
+            )
+        else:
+            self._increase(self.count_numbers_sendit_var, self.numbers_sendit, "Send: ")
+
         # لازم التنفيذ في Main Thread
         print(f"Gui: Number: {number}, Channel {channel}")
         self.after(2, lambda: self._safe_gui_update(number, channel))
