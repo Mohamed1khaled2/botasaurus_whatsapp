@@ -2,7 +2,7 @@ import threading
 import random
 from time import sleep
 from typing import List, Dict, Any, Optional
-from botasaurus.browser import Driver, Wait
+from botasaurus.browser import Driver, Wait, browser
 from helper_functions import get_profile, make_data_item, write_message, read_json
 
 
@@ -31,18 +31,17 @@ class WhatsAppSender:
         }
 
     # ------------------------ إدارة المتصفحات ------------------------
+
     def _start_driver_for(self, data_item: Dict[str, Any]):
-        
+
         # توليد أبعاد عشوائية
-        width = random.randint(700, 1200)
-        height = random.randint(500, 900)
-        
         phone = str(data_item.get("phone_number", "unknown"))
         try:
             profile_path = get_profile(data_item)
+            print(profile_path)
             drv: Optional[Driver] = None
             try:
-                drv = Driver(profile=profile_path, chrome_args=[f"--window-size={width},{height}"]) if profile_path else Driver()
+                drv = Driver(profile=profile_path) if profile_path else Driver()
             except Exception:
                 drv = Driver()
 
@@ -73,21 +72,22 @@ class WhatsAppSender:
             print(f"[{phone}] exception in driver thread: {e}")
 
     def open_browser_only(self, numbers_open: List[str]):
-    
-        for k,v in self.drivers.items():
+
+        for k, v in self.drivers.items():
             if k in numbers_open:
                 try:
                     index_ = numbers_open.index(k)
                     try:
-                         self.drivers.get(k).current_url
-                         numbers_open.pop(index_)
+                        self.drivers.get(k).current_url
+                        numbers_open.pop(index_)
                     except Exception as e:
                         pass
-                except Exception as e :
-                    print(e)     
-                    
+                except Exception as e:
+                    print(e)
+
         try:
-            if len(numbers_open) == 0 : return 
+            if len(numbers_open) == 0:
+                return
             data_items = [make_data_item(p) for p in numbers_open]
             for item in data_items:
                 t = threading.Thread(
@@ -98,7 +98,7 @@ class WhatsAppSender:
             self.browsers_opened = True
         except Exception as e:
             print(f">> {e}")
-    
+
         print(
             f"Started {len(self.browsers_threads)} browser thread(s). Log in to each if needed."
         )
@@ -128,7 +128,7 @@ class WhatsAppSender:
         self.browsers_threads.clear()
         self.browsers_opened = False
         print("✅ All drivers closed and threads cleaned.")
-    
+
     def _collect_drivers(self, timeout: float = 30.0) -> Dict[str, Driver]:
         from time import time
 
