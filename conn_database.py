@@ -30,7 +30,7 @@ class ChanDataBase:
 
     def create_tables(self):
         self.cur.execute(
-            f"""Create Table IF NOT EXISTS numbers(number_id INT, number INT, last_used DATE)"""
+            f"""Create Table IF NOT EXISTS numbers(number_id INT, number TEXT, last_used DATE)"""
         )
         self.con.commit()
 
