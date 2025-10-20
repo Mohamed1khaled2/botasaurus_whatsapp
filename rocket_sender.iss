@@ -1,7 +1,7 @@
 ; 🚀 Rocket Sender Installer (Standalone Version)
 [Setup]
 AppName=Rocket Sender
-AppVersion=1.0
+AppVersion=2.0
 AppPublisher=Rocket Team
 AppPublisherURL=https://rocket-sender.app
 DefaultDirName={autopf}\Rocket Sender
