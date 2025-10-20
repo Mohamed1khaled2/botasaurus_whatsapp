@@ -78,7 +78,7 @@ class ChannelsTab(ctk.CTkFrame):
             print("❌ لم يتم حذف أي رقم")
 
     def input_dialog(self):
-        dialog = ctk.CTkInputDialog(text="Type in a number:", title="Test")
+        dialog = ctk.CTkInputDialog(text="Type in a number:", title="Enter Number")
         number = dialog.get_input()
         if number:
             self.table.add_data([[number]])
