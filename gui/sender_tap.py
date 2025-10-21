@@ -98,7 +98,6 @@ class SenderTapWindow(ctk.CTkFrame):
             font=("arial", 12, "bold"),
         )
         self.clear_numbers.grid(row=2, column=4)
-
     def _increase(self, stringvar, intvar, text: str):
         intvar.set(intvar.get() + 1)
         stringvar.set(f"{text}: {intvar.get()}")
@@ -130,12 +129,12 @@ class SenderTapWindow(ctk.CTkFrame):
                 self.selected_numbers,
                 self.data_numbers,
                 self.messages,
+                self.settings, 
                 1.5,
                 3.5,
                 True,
-                self.settings
             ),
-            kwargs={"on_mes sage_sent": self.update_gui},  # 👈 تمرير callback
+            kwargs={"on_message_sent": self.update_gui},  # 👈 تمرير callback
             daemon=True,
         ).start()
 

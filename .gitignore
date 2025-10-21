@@ -4,3 +4,4 @@ __pycache__/
 database/
 main.dist/
 main.build/
+test.py

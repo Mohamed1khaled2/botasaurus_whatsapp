@@ -4,16 +4,15 @@ import customtkinter as ctk
 class WaysToSendFrame(ctk.CTkFrame):
     def __init__(self, master, notify_fun, **kwargs):
         super().__init__(master, **kwargs)
-        self.notify_fun = notify_fun  # ✅ حفظ الدالة المرسلة
+        self.notify_fun = notify_fun
 
         self.columnconfigure((0, 1), weight=1)
         self.rowconfigure((0, 1), weight=1)
 
-        # ✅ المتغيرات
-        self.with_google_contacts_var = ctk.BooleanVar(value=False)
-        self.with_chat_me_li_var = ctk.BooleanVar(value=True)
-        self.with_chat_me_num_var = ctk.BooleanVar(value=False)
-
+        # ✅ القيم الافتراضية مباشرة هنا
+        self.with_google_contacts_var = ctk.BooleanVar(value=True)   # الافتراضي شغال
+        self.with_chat_me_li_var = ctk.BooleanVar(value=True)        # الافتراضي شغال
+        self.with_chat_me_num_var = ctk.BooleanVar(value=False)      # الافتراضي مطفي
 
         # ✅ Checkboxes
         self.with_google_contacts_cb = ctk.CTkCheckBox(
@@ -21,7 +20,7 @@ class WaysToSendFrame(ctk.CTkFrame):
             text="By Google Contacts",
             command=self.checkbox_event,
             variable=self.with_google_contacts_var,
-            font=('arial', 13, 'bold')
+            font=("arial", 13, "bold"),
         )
 
         self.with_chat_with_me_li_cb = ctk.CTkCheckBox(
@@ -29,7 +28,7 @@ class WaysToSendFrame(ctk.CTkFrame):
             text="Chat With Me Link",
             command=self.checkbox_event,
             variable=self.with_chat_me_li_var,
-            font=('arial', 13, 'bold')
+            font=("arial", 13, "bold"),
         )
 
         self.with_chat_with_me_num_cb = ctk.CTkCheckBox(
@@ -37,13 +36,13 @@ class WaysToSendFrame(ctk.CTkFrame):
             text="Chat With Me Num",
             command=self.checkbox_event,
             variable=self.with_chat_me_num_var,
-            font=('arial', 13, 'bold')
+            font=("arial", 13, "bold"),
         )
+
         self.with_google_contacts_cb.grid(row=0, column=0, padx=10, pady=10, sticky="w")
         self.with_chat_with_me_li_cb.grid(row=1, column=0, padx=10, pady=10, sticky="w")
         self.with_chat_with_me_num_cb.grid(row=0, column=1, padx=0, pady=10, sticky="w")
-        
-        
+
     def checkbox_event(self):
         print("Google Contacts:", self.with_google_contacts_var.get())
         print("Chat With Me Link:", self.with_chat_me_li_var.get())
@@ -63,24 +62,30 @@ class SettingTab(ctk.CTkFrame):
         self.columnconfigure((0, 1), weight=1)
         self.rowconfigure((0, 1, 2), weight=1)
 
-        self.label_settings = ctk.CTkLabel(self, text="Settings", font=('Arial', 35, 'bold'))
+        self.label_settings = ctk.CTkLabel(
+            self, text="Settings", font=("Arial", 35, "bold")
+        )
         self.label_settings.grid(row=0, column=0, columnspan=2, pady=20)
 
         self.on_settings_changed = on_settings_changed
 
+        # ✅ إنشاء WaysToSendFrame بالقيم الافتراضية اللي جوه الكلاس نفسه
         self.ways_to_send = WaysToSendFrame(self, notify_fun=self.notify_settings_changed)
-        self.ways_to_send.grid(column=0, row=1, sticky='nswe', padx=5, pady=20)
+        self.ways_to_send.grid(column=0, row=1, sticky="nswe", padx=5, pady=20)
+
+        # ✅ تحديث أولي
+        self.notify_settings_changed()
 
     def notify_settings_changed(self):
-        # ✅ هنا ممكن تجمع القيم الجديدة من WaysToSendFrame
         self.settings = {
-            "google_contacts": self.ways_to_send.with_google_contacts_var.get(),
-            "chat_me_link": self.ways_to_send.with_chat_me_li_var.get(),
-            "chat_me_number": self.ways_to_send.with_chat_me_num_var.get()
+            "ways_to_send": {
+                "google_contacts": self.ways_to_send.with_google_contacts_var.get(),
+                "chat_me_link": self.ways_to_send.with_chat_me_li_var.get(),
+                "chat_me_number": self.ways_to_send.with_chat_me_num_var.get(),
+            }
         }
         print("Updated Settings:", self.settings)
 
-        # ✅ لو في callback خارجي، بلّغه
         if self.on_settings_changed:
             self.on_settings_changed(self.settings)
 

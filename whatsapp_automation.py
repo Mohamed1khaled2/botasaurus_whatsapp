@@ -32,45 +32,33 @@ class WhatsAppSender:
         }
 
     # ------------------------ إدارة المتصفحات ------------------------
-
+    
+    
     def _start_driver_for(self, data_item: Dict[str, Any]):
-
-        # توليد أبعاد عشوائية
-        phone = str(data_item.get("phone_number", "unknown"))
-        try:
-            profile_path = get_profile(data_item)
-            print(profile_path)
-            drv: Optional[Driver] = None
+        @browser(close_on_crash=True, profile=get_profile) # to not retrying open browsers again of crash
+        def run_browser(driver: Driver, data):
+            phone = str(data.get("phone_number", "unknown"))
             try:
-                drv = Driver(profile=profile_path) if profile_path else Driver()
-            except Exception:
-                drv = Driver()
+                profile_path = get_profile(data)
+                print(profile_path)
+                with self.drivers_lock:
+                    self.drivers[phone] = driver
 
-            with self.drivers_lock:
-                self.drivers[phone] = drv
+                driver.enable_human_mode()
+                driver.google_get("https://web.whatsapp.com/")
+                sleep(random.uniform(4, 8))
+                driver.run_js(f'document.title = "📞 {phone}";')
+                print(f"[{phone}] ✅ WhatsApp browser ready.")
+                self.all_drivers_ready.set()
 
-            try:
-                drv.enable_human_mode()
-                drv.set_window_size(800, 600)
+                while not self.stop_event.is_set():
+                    sleep(1)
 
-            except Exception:
-                pass
+            except Exception as e:
+                print(f"[{phone}] exception in driver thread: {e}")
 
-            drv.google_get("https://web.whatsapp.com/")
-            sleep(random.uniform(4, 8))
-            try:
-                drv.run_js(f'document.title = "📞 {phone}";')
-            except Exception:
-                pass
+        run_browser(data_item)
 
-            print(f"[{phone}] ✅ WhatsApp browser ready.")
-
-            self.all_drivers_ready.set()
-            while not self.stop_event.is_set():
-                sleep(1)
-
-        except Exception as e:
-            print(f"[{phone}] exception in driver thread: {e}")
 
     def open_browser_only(self, numbers_open: List[str]):
 
@@ -144,91 +132,84 @@ class WhatsAppSender:
 
     # ------------------------ إرسال الرسائل ------------------------
     def logic_to_send(
-        self, driver: Driver, assigned_number: str, receiver: str, message: str, settings: Dict[str, bool]
+        self, driver: Driver, assigned_number: str, receiver: str, message: str, way_to_send: str
     ):
         
-        def __get_frist_chat():
-           
-            first_chat = driver.is_element_present(
-                            selector=self.json_data[google_contacts_key]["first_chat"]
-                        )
-            click_new_chat = driver.wait_for_element(selector=self.json_data[google_contacts_key]['button_new_chat'])
-            click_new_chat.click()
+        
+        def __send_message():
+            "because if any cases we send message with the same way"
+            driver.wait_for_element(selector=self.json_data["general"]["type_message_ele"]).click()
             
-            write_message(driver, assigned_number, is_message=False)
+            driver.long_random_sleep()
             
-            driver.short_random_sleep()
-            
-            if first_chat:
-                driver.wait_for_element(selector=self.json_data[google_contacts_key]["first_chat"]).click()
-            else:
+            write_message(driver, message, is_message=True)
+            sleep(random.uniform(1.5, 5))
+            try:
                 driver.wait_for_element(
-                    selector=self.json_data[google_contacts_key]["clear_button"], wait=Wait.VERY_LONG
+                    selector=self.json_data["general"]["send_button_1"]
                 ).click()
-                print(f"[{receiver}] ⚠️ Number {assigned_number} not found")
-                return "Number Not Found or Not Have Whatsapp"
+            except Exception:
+                driver.wait_for_element(
+                    selector=self.json_data["general"]["send_button_2"]
+                ).click()
+
         
         try:
-            if settings['google_contacts'] == True:
-                
-                google_contacts_key = 'google_contacts'
-                
-                random_way = random.randint(1,2)
-                
-                match random_way:
-                    case 1 :
-                        search_box = driver.get_element_containing_text(
-                            "Search or start a new chat", wait=Wait.VERY_LONG
-                        )
-                        search_box.click()
-                        write_message(driver, assigned_number, is_message=False)
-                        sleep(random.uniform(1, 2.5))
-                        driver.short_random_sleep()
+            match way_to_send:
+                case 'google_contacts':
+                    random_way = random.randint(1,2)
+                    
+                    match random_way:
+                        case 1 :
+                            #* here way_to_send = google_contacts
+                            search_box = driver.get_element_containing_text(
+                                "Search or start a new chat", wait=Wait.VERY_LONG
+                            )
+                            search_box.click()
+                            write_message(driver, assigned_number, is_message=False)
+                            sleep(random.uniform(1, 2.5))
+                            driver.short_random_sleep()
 
-                        first_chat = driver.is_element_present(
-                            selector=self.json_data[google_contacts_key]["first_chat"]
-                        )
-                        
-                        if first_chat:
-                            driver.wait_for_element(selector=self.json_data[google_contacts_key]["first_chat"]).click()
-                        else:
-                            driver.wait_for_element(
-                                selector=self.json_data[google_contacts_key]["clear_button"], wait=Wait.VERY_LONG
-                            ).click()
-                            print(f"[{receiver}] ⚠️ Number {assigned_number} not found")
-                            return "Number Not Found or Not Have Whatsapp"
+                            first_chat = driver.is_element_present(
+                                selector=self.json_data[way_to_send]["first_chat"]
+                            )
+                            
+                            if first_chat:
+                                driver.wait_for_element(selector=self.json_data[way_to_send]["first_chat"]).click()
+                            else:
+                                driver.wait_for_element(
+                                    selector=self.json_data[way_to_send]["clear_button"], wait=Wait.VERY_LONG
+                                ).click()
+                                print(f"[{receiver}] ⚠️ Number {assigned_number} not found")
+                                return "Number Not Found or Not Have Whatsapp"
 
-                        driver.wait_for_element(selector=self.json_data[google_contacts_key]["type_message_ele"]).click()
-                        driver.long_random_sleep()
-                        write_message(driver, message, is_message=True)
-                        sleep(random.uniform(1.5, 5))
-                        try:
-                            driver.wait_for_element(
-                                selector=self.json_data[google_contacts_key]["send_button_1"]
-                            ).click()
-                        except Exception:
-                            driver.wait_for_element(
-                                selector=self.json_data[google_contacts_key]["send_button_2"]
-                            ).click()
+                            driver.wait_for_element(selector=self.json_data[way_to_send]["type_message_ele"]).click()
+                            driver.long_random_sleep()
+                            write_message(driver, message, is_message=True)
+                            sleep(random.uniform(1.5, 5))
+                            
+                            __send_message()
 
-                        print(f"[{receiver}] ✅ Sent to {assigned_number}")
-                    case 2:
-                        click_new_chat = driver.wait_for_element(selector=self.json_data[google_contacts_key]['button_new_chat'])
-                        click_new_chat.click()
+                            print(f"[{receiver}] ✅ Sent to {assigned_number}")
+                        case 2:
+                            click_new_chat = driver.wait_for_element(selector=self.json_data[way_to_send]['button_new_chat'])
+                            click_new_chat.click()
+                            
+                            write_message(driver, assigned_number, is_message=False)
+                            
+                            driver.short_random_sleep()
+                            
+                            if first_chat:
+                                driver.wait_for_element(selector=self.json_data[way_to_send]["first_chat2"]).click()
+                            else:
+                                driver.wait_for_element(
+                                    selector=self.json_data[way_to_send]["clear_button2"], wait=Wait.VERY_LONG
+                                ).click()
+                                print(f"[{receiver}] ⚠️ Number {assigned_number} not found")
+                                return "Number Not Found or Not Have Whatsapp"
                         
-                        write_message(driver, assigned_number, is_message=False)
-                        
-                        driver.short_random_sleep()
-                        
-                        if first_chat:
-                            driver.wait_for_element(selector=self.json_data[google_contacts_key]["first_chat"]).click()
-                        else:
-                            driver.wait_for_element(
-                                selector=self.json_data[google_contacts_key]["clear_button"], wait=Wait.VERY_LONG
-                            ).click()
-                            print(f"[{receiver}] ⚠️ Number {assigned_number} not found")
-                            return "Number Not Found or Not Have Whatsapp"
-                        
+                            __send_message()
+
                         
         except Exception as e:
             print(f">>>> send error {e}")
@@ -266,7 +247,13 @@ class WhatsAppSender:
             sender_phone = str(senders[sender_index])
             driver = sender_drivers[sender_phone]
             message = random.choice(messages)
+            way_to_send = settings['ways_to_send']
+            print(way_to_send)
 
+
+                
+            
+            # ways_approve = random.choice([{way:status  for way, status in settings.items() if status == True}])
             try:
                 with self.send_lock:
                     results = self.logic_to_send(
@@ -274,6 +261,7 @@ class WhatsAppSender:
                         assigned_number=recipient[0],
                         receiver=sender_phone,
                         message=message,
+                        way_to_send=""
                     )
                     if on_message_sent:
                         if results == ("Number Not Found or Not Have Whatsapp"):
