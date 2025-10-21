@@ -133,8 +133,9 @@ class SenderTapWindow(ctk.CTkFrame):
                 1.5,
                 3.5,
                 True,
+                self.settings
             ),
-            kwargs={"on_message_sent": self.update_gui},  # 👈 تمرير callback
+            kwargs={"on_mes sage_sent": self.update_gui},  # 👈 تمرير callback
             daemon=True,
         ).start()
 
