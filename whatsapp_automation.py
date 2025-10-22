@@ -3,7 +3,7 @@ import random
 from time import sleep
 from typing import List, Dict, Any, Optional
 from botasaurus.browser import Driver, Wait, browser
-from helper_functions import get_profile, make_data_item, write_message, read_json
+from helper_functions import get_profile, make_data_item, write_safe_message, read_json
 
 
 class WhatsAppSender:
@@ -17,6 +17,8 @@ class WhatsAppSender:
         self.browsers_opened: bool = False
         self.json_data = read_json()
         self.all_drivers_ready = threading.Event()
+        self.pause_event = threading.Event()  # للتحكم في الإرسال فقط
+
 
         # للحفاظ على حالة الإرسال عند pause/resume
         self._sending_state = {
@@ -28,14 +30,16 @@ class WhatsAppSender:
             "on_message_sent": None,
             "current_index": 0,
             "thread": None,
-            "settings":{}
+            "settings": {},
         }
 
     # ------------------------ إدارة المتصفحات ------------------------
-    
-    
+
     def _start_driver_for(self, data_item: Dict[str, Any]):
-        @browser(close_on_crash=True, profile=get_profile) # to not retrying open browsers again of crash
+        
+        @browser(
+            close_on_crash=True, profile=get_profile
+        )  # to not retrying open browsers again of crash
         def run_browser(driver: Driver, data):
             phone = str(data.get("phone_number", "unknown"))
             try:
@@ -51,14 +55,13 @@ class WhatsAppSender:
                 print(f"[{phone}] ✅ WhatsApp browser ready.")
                 self.all_drivers_ready.set()
 
-                while not self.stop_event.is_set():
+                while not self.stop_event.is_set():  # خليها كما هي للتحكم في الغلق النهائي فقط
                     sleep(1)
 
             except Exception as e:
                 print(f"[{phone}] exception in driver thread: {e}")
 
         run_browser(data_item)
-
 
     def open_browser_only(self, numbers_open: List[str]):
 
@@ -132,89 +135,145 @@ class WhatsAppSender:
 
     # ------------------------ إرسال الرسائل ------------------------
     def logic_to_send(
-        self, driver: Driver, assigned_number: str, receiver: str, message: str, way_to_send: str
+        self,
+        driver: Driver,
+        assigned_number: str,
+        receiver: str,
+        message: str,
+        way_to_send: str,
     ):
-        
-        
-        def __send_message():
-            "because if any cases we send message with the same way"
-            driver.wait_for_element(selector=self.json_data["general"]["type_message_ele"]).click()
-            
+
+        def __send_message(driver, message, json_data):
+            """Send the message after opening the chat (safe version)."""
+            driver.wait_for_element(
+                selector=json_data["general"]["type_message_ele"]
+            ).click()
             driver.long_random_sleep()
-            
-            write_message(driver, message, is_message=True)
+
+            # استخدام الكتابة الآمنة
+            res = write_safe_message(driver, message, prefer="chat", allow_search=False)
+            print("💬 write result:", res)
+
             sleep(random.uniform(1.5, 5))
             try:
                 driver.wait_for_element(
-                    selector=self.json_data["general"]["send_button_1"]
+                    selector=json_data["general"]["send_button_1"]
                 ).click()
             except Exception:
                 driver.wait_for_element(
-                    selector=self.json_data["general"]["send_button_2"]
+                    selector=json_data["general"]["send_button_2"]
                 ).click()
 
-        
         try:
             match way_to_send:
-                case 'google_contacts':
-                    random_way = random.randint(1,2)
-                    
+                case "google_contacts":
+                    random_way = 1
+
                     match random_way:
-                        case 1 :
-                            #* here way_to_send = google_contacts
+
+                        case 1:
+
                             search_box = driver.get_element_containing_text(
                                 "Search or start a new chat", wait=Wait.VERY_LONG
                             )
                             search_box.click()
-                            write_message(driver, assigned_number, is_message=False)
+
+                            # كتابة الرقم في search (بدقة وآمان)
+                            res = write_safe_message(
+                                driver,
+                                assigned_number,
+                                prefer="search",
+                                allow_search=True,
+                            )
+                            print("🔍 search write result:", res)
+
                             sleep(random.uniform(1, 2.5))
                             driver.short_random_sleep()
 
                             first_chat = driver.is_element_present(
                                 selector=self.json_data[way_to_send]["first_chat"]
                             )
-                            
+
                             if first_chat:
-                                driver.wait_for_element(selector=self.json_data[way_to_send]["first_chat"]).click()
+                                driver.wait_for_element(
+                                    selector=self.json_data[way_to_send]["first_chat"]
+                                ).click()
                             else:
                                 driver.wait_for_element(
-                                    selector=self.json_data[way_to_send]["clear_button"], wait=Wait.VERY_LONG
+                                    selector=self.json_data[way_to_send][
+                                        "clear_button"
+                                    ],
+                                    wait=Wait.VERY_LONG,
                                 ).click()
-                                print(f"[{receiver}] ⚠️ Number {assigned_number} not found")
+                                print(
+                                    f"[{receiver}] ⚠️ Number {assigned_number} not found"
+                                )
                                 return "Number Not Found or Not Have Whatsapp"
 
-                            driver.wait_for_element(selector=self.json_data[way_to_send]["type_message_ele"]).click()
-                            driver.long_random_sleep()
-                            write_message(driver, message, is_message=True)
-                            sleep(random.uniform(1.5, 5))
-                            
-                            __send_message()
-
+                            __send_message(driver, message, self.json_data)
                             print(f"[{receiver}] ✅ Sent to {assigned_number}")
                         case 2:
-                            click_new_chat = driver.wait_for_element(selector=self.json_data[way_to_send]['button_new_chat'])
+
+                            click_new_chat = driver.wait_for_element(
+                                selector=self.json_data[way_to_send]["button_new_chat"]
+                            )
                             click_new_chat.click()
-                            
-                            write_message(driver, assigned_number, is_message=False)
-                            
+
+                            # كتابة الرقم في نافذة new chat
+                            res = write_safe_message(
+                                driver,
+                                assigned_number,
+                                prefer="search",
+                                allow_search=True,
+                            )
+                            print("🔍 new chat write result:", res)
+
                             driver.short_random_sleep()
-                            
+
+                            first_chat = driver.is_element_present(
+                                selector=self.json_data[way_to_send]["first_chat2"]
+                            )
+
                             if first_chat:
-                                driver.wait_for_element(selector=self.json_data[way_to_send]["first_chat2"]).click()
+                                driver.wait_for_element(
+                                    selector=self.json_data[way_to_send]["first_chat2"]
+                                ).click()
                             else:
                                 driver.wait_for_element(
-                                    selector=self.json_data[way_to_send]["clear_button2"], wait=Wait.VERY_LONG
+                                    selector=self.json_data[way_to_send][
+                                        "clear_button2"
+                                    ],
+                                    wait=Wait.VERY_LONG,
                                 ).click()
-                                print(f"[{receiver}] ⚠️ Number {assigned_number} not found")
+                                print(
+                                    f"[{receiver}] ⚠️ Number {assigned_number} not found"
+                                )
                                 return "Number Not Found or Not Have Whatsapp"
-                        
-                            __send_message()
 
-                        
+                            __send_message(driver, message, self.json_data)
+
+                case "chat_me_link":
+                    pass
+                case "chat_me_number":
+                    pass
+
         except Exception as e:
             print(f">>>> send error {e}")
 
     def _send_loop(self):
+
+        def __get_tragted_way__() -> str:
+            # way_to_send = settings['ways_to_send']
+            # ways = []
+
+            # target_way = random.choice(ways)
+            # for way in way_to_send.keys():
+            #     if way_to_send[way] == True:
+            #         ways.append(way_to_send[way])
+
+            # return target_way
+            return "google_contacts"
+
         state = self._sending_state
         senders = state["senders"]
         recipients = state["recipients"]
@@ -238,21 +297,19 @@ class WhatsAppSender:
 
         idx = state["current_index"]
         while idx < len(recipients):
-            if self.stop_event.is_set():
-                print("Pause signal received. Sending paused.")
-                break
+            if self.pause_event.is_set():
+                print("⏸️ Sending paused... waiting to resume.")
+                while self.pause_event.is_set() and not self.stop_event.is_set():
+                    sleep(1)
+                print("▶️ Resuming sending...")
 
             recipient = recipients[idx]
             sender_index = idx % n_senders
             sender_phone = str(senders[sender_index])
             driver = sender_drivers[sender_phone]
             message = random.choice(messages)
-            way_to_send = settings['ways_to_send']
-            print(way_to_send)
+            way_to_send = __get_tragted_way__()
 
-
-                
-            
             # ways_approve = random.choice([{way:status  for way, status in settings.items() if status == True}])
             try:
                 with self.send_lock:
@@ -261,7 +318,7 @@ class WhatsAppSender:
                         assigned_number=recipient[0],
                         receiver=sender_phone,
                         message=message,
-                        way_to_send=""
+                        way_to_send=way_to_send,
                     )
                     if on_message_sent:
                         if results == ("Number Not Found or Not Have Whatsapp"):
@@ -283,12 +340,13 @@ class WhatsAppSender:
         senders: List[str],
         recipients: List[str],
         messages: List[str],
-        settings: dict[str, bool], 
+        settings: dict[str, bool],
         min_delay: float = 1.0,
         max_delay: float = 3.0,
         background: bool = False,
         on_message_sent=None,
     ):
+        print(settings)
         if not self.browsers_opened:
             raise RuntimeError(
                 "Browsers are not open. Call open_browser_only(...) first."
@@ -304,7 +362,7 @@ class WhatsAppSender:
                 "max_delay": max_delay,
                 "on_message_sent": on_message_sent,
                 "current_index": 0,
-                "settings":settings
+                "settings": settings,
             }
         )
 
@@ -315,30 +373,19 @@ class WhatsAppSender:
             return t
         else:
             self._send_loop()
-
+            
     def stop_sending(self):
-        """Pause sending (thread stays alive)."""
-        print("Pausing sending...")
-        self.stop_event.set()
+        """Pause sending only (keeps browsers open)."""
+        print("⏸️ Pausing sending...")
+        self.pause_event.set()
 
     def resume_sending(self):
-        """Resume sending from last paused index."""
+        """Resume sending after pause."""
         if not self._sending_state["recipients"]:
             print("No sending state found. Cannot resume.")
             return
-        if (
-            self._sending_state.get("thread")
-            and self._sending_state["thread"].is_alive()
-        ):
-            print("Already running. Clearing pause flag...")
-            self.stop_event.clear()
-            return
-
-        print("Resuming sending...")
-        self.stop_event.clear()
-        t = threading.Thread(target=self._send_loop, daemon=True)
-        t.start()
-        self._sending_state["thread"] = t
+        print("▶️ Resuming sending...")
+        self.pause_event.clear()
 
 
 if __name__ == "__main__":
