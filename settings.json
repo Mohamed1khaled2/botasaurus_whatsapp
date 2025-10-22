@@ -1,0 +1,7 @@
+{
+    "ways_to_send": {
+        "google_contacts": false,
+        "chat_me_link": true,
+        "chat_me_number": false
+    }
+}

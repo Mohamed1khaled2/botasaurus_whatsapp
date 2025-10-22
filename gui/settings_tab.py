@@ -1,18 +1,21 @@
 import customtkinter as ctk
-
+from mange_settings import *
 
 class WaysToSendFrame(ctk.CTkFrame):
     def __init__(self, master, notify_fun, **kwargs):
         super().__init__(master, **kwargs)
+
         self.notify_fun = notify_fun
 
         self.columnconfigure((0, 1), weight=1)
         self.rowconfigure((0, 1), weight=1)
 
-        # ✅ القيم الافتراضية مباشرة هنا
-        self.with_google_contacts_var = ctk.BooleanVar(value=True)   # الافتراضي شغال
-        self.with_chat_me_li_var = ctk.BooleanVar(value=True)        # الافتراضي شغال
-        self.with_chat_me_num_var = ctk.BooleanVar(value=False)      # الافتراضي مطفي
+        self.ws_json = load_settings()['ways_to_send']
+
+        # ✅ المتغيرات
+        self.with_google_contacts_var = ctk.BooleanVar(value=self.ws_json['google_contacts'])
+        self.with_chat_me_li_var = ctk.BooleanVar(value=self.ws_json['chat_me_link'])
+        self.with_chat_me_num_var = ctk.BooleanVar(value=self.ws_json['chat_me_number'])
 
         # ✅ Checkboxes
         self.with_google_contacts_cb = ctk.CTkCheckBox(
@@ -49,7 +52,6 @@ class WaysToSendFrame(ctk.CTkFrame):
         print("Chat With Me Number:", self.with_chat_me_num_var.get())
         print("-----")
 
-        # ✅ نبلغ SettingTab إن في تغيير حصل
         self.notify_fun()
 
 
@@ -57,7 +59,8 @@ class SettingTab(ctk.CTkFrame):
     def __init__(self, master, on_settings_changed=None, **kwargs):
         super().__init__(master, **kwargs)
 
-        self.settings = {}
+        self.settings = load_settings()
+        self.on_settings_changed = on_settings_changed
 
         self.columnconfigure((0, 1), weight=1)
         self.rowconfigure((0, 1, 2), weight=1)
@@ -67,27 +70,33 @@ class SettingTab(ctk.CTkFrame):
         )
         self.label_settings.grid(row=0, column=0, columnspan=2, pady=20)
 
-        self.on_settings_changed = on_settings_changed
-
-        # ✅ إنشاء WaysToSendFrame بالقيم الافتراضية اللي جوه الكلاس نفسه
-        self.ways_to_send = WaysToSendFrame(self, notify_fun=self.notify_settings_changed)
+        self.ways_to_send = WaysToSendFrame(
+            self, notify_fun=self.notify_settings_changed
+        )
         self.ways_to_send.grid(column=0, row=1, sticky="nswe", padx=5, pady=20)
 
         # ✅ تحديث أولي
         self.notify_settings_changed()
 
-    def notify_settings_changed(self):
-        self.settings = {
-            "ways_to_send": {
-                "google_contacts": self.ways_to_send.with_google_contacts_var.get(),
-                "chat_me_link": self.ways_to_send.with_chat_me_li_var.get(),
-                "chat_me_number": self.ways_to_send.with_chat_me_num_var.get(),
-            }
-        }
-        print("Updated Settings:", self.settings)
+    def update_ways_to_send(self):
+        google_contacts = self.ways_to_send.with_google_contacts_var.get()
+        chat_me_link = self.ways_to_send.with_chat_me_li_var.get()
+        chat_me_number = self.ways_to_send.with_chat_me_num_var.get()
 
+        if not google_contacts and not chat_me_link and not chat_me_number:
+            self.ways_to_send.with_chat_me_li_var.set(value=True)
+
+        set_setting('ways_to_send.google_contacts', google_contacts)
+        set_setting('ways_to_send.chat_me_link', chat_me_link)
+        set_setting('ways_to_send.chat_me_number', chat_me_number)
+
+    def notify_settings_changed(self):
+        self.update_ways_to_send()
+        self.settings = load_settings()
+        print("Updated Settings:", self.settings)
         if self.on_settings_changed:
             self.on_settings_changed(self.settings)
+
 
 
 if __name__ == "__main__":
